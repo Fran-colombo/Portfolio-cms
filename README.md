@@ -137,7 +137,7 @@ SECRET_KEY=your-long-random-secret-here
 ADMIN_EMAIL=you@yourdomain.com
 ADMIN_PASSWORD=your-secure-password
 DATABASE_URL=sqlite:////app/data/portfolio.db
-CORS_ORIGINS=http://your-domain.com,https://your-domain.com
+CORS_ORIGINS=http://your-server-ip:8083
 ```
 
 3. Start the application:
@@ -147,8 +147,8 @@ docker compose up -d --build
 ```
 
 4. Access:
-   - Public site: `http://your-server-ip`
-   - Admin panel: `http://your-server-ip/admin/login`
+   - Public site: `http://your-server-ip:8083`
+   - Admin panel: `http://your-server-ip:8083/admin/login`
 
 The SQLite database is stored in `./data/` and persists across container restarts.
 
@@ -209,18 +209,17 @@ Verify it is running:
 
 ```bash
 docker compose ps
-curl http://localhost/api/health
+curl http://localhost:8083/api/health
 ```
 
 ### 6. Open firewall ports
 
 ```bash
-sudo ufw allow 80/tcp
-sudo ufw allow 443/tcp
+sudo ufw allow 8083/tcp
 sudo ufw enable
 ```
 
-Your portfolio is now accessible at `http://your-server-ip`.
+Your portfolio is now accessible at `http://your-server-ip:8083`.
 
 ### 7. (Optional) Add a custom domain with HTTPS
 
