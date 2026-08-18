@@ -29,6 +29,7 @@ export default function App() {
         }
       >
         <Route index element={<Dashboard />} />
+        <Route path="projects" element={<Dashboard />} />
         <Route path="projects/new" element={<ProjectForm />} />
         <Route path="projects/:id/edit" element={<ProjectForm />} />
       </Route>

@@ -23,10 +23,24 @@ async function request(path, options = {}) {
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const response = await fetch(path, {
-    ...options,
-    headers,
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+  let response;
+  try {
+    response = await fetch(path, {
+      ...options,
+      headers,
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error('The server did not respond. Check that the backend is running.');
+    }
+    throw new Error('Could not reach the API. Check that the backend is running.');
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (response.status === 204) {
     return null;
