@@ -24,10 +24,10 @@ export default function Home() {
     <div className="page home">
       <section className="hero container">
         <p className="hero-label">Software Developer</p>
-        <h1 className="hero-title">Those are the projects I'm working on</h1>
+        <h1 className="hero-title">Projects built to solve real problems</h1>
         <p className="hero-subtitle">
-          Hi, my name is Francesco, this is a curated showcase of applications I have designed and built — live demos, work in progress,
-          and detailed project breakdowns.
+          Hi, I&apos;m Francesco — a software developer who builds practical apps and ships projects end to end,
+          from idea to working demos.
         </p>
         <Link to="/projects" className="btn btn-primary">
           View all projects
@@ -56,7 +56,7 @@ export default function Home() {
         <section className="featured incoming-section container">
           <h2 className="section-title">Incoming</h2>
           <p className="section-subtitle">
-            Projects currently in development — not yet deployed, but actively being built.
+            Work in progress — details available, demos coming soon.
           </p>
           <div className="grid">
             {incoming.map((project) => (

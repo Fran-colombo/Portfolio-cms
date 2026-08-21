@@ -9,12 +9,12 @@ export default function ProjectCard({ project, incoming = false }) {
       {project.image_url && (
         <div className="project-card-image">
           <img src={project.image_url} alt={project.title} loading="lazy" />
-          {isIncoming && <span className="project-card-badge">In progress</span>}
+          {isIncoming && <span className="project-card-badge">Incoming</span>}
         </div>
       )}
       {!project.image_url && isIncoming && (
         <div className="project-card-image project-card-image-placeholder">
-          <span className="project-card-badge">In progress</span>
+          <span className="project-card-badge">Incoming</span>
         </div>
       )}
       <div className="project-card-body">

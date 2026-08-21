@@ -49,17 +49,18 @@ export default function ProjectDetail() {
 
         <header className="project-header">
           <h1>{project.title}</h1>
-          {project.is_incoming && <span className="incoming-detail-badge">In progress</span>}
+          {project.is_incoming && <span className="incoming-detail-badge">Incoming</span>}
           {project.short_description && <p className="project-lead">{project.short_description}</p>}
 
           <div className="project-cta">
-            {project.is_incoming && !project.demo_url && (
+            {project.is_incoming ? (
               <span className="btn btn-incoming">Demo coming soon</span>
-            )}
-            {!project.is_incoming && project.demo_url && (
-              <a href={project.demo_url} target="_blank" rel="noopener noreferrer" className="btn btn-demo">
-                Launch DEMO
-              </a>
+            ) : (
+              project.demo_url && (
+                <a href={project.demo_url} target="_blank" rel="noopener noreferrer" className="btn btn-demo">
+                  Launch DEMO
+                </a>
+              )
             )}
             {project.repository_url && (
               <a

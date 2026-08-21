@@ -51,7 +51,7 @@ export default function Projects() {
             <>
               <h2 className="subsection-title incoming-heading">Incoming</h2>
               <p className="section-subtitle">
-                Projects in development — not yet deployed to a server.
+                Work in progress — details available, demos coming soon.
               </p>
               <div className="grid">
                 {incoming.map((project) => (
