@@ -1,3 +1,9 @@
 fran-portfolio.duckdns.org {
 	reverse_proxy frontend:80
 }
+
+# Other apps keep working on port 80 via this catch-all.
+# Point this at the container that previously published 80 (now 8084).
+:80 {
+	reverse_proxy host.docker.internal:8084
+}

@@ -231,13 +231,15 @@ The site is then available at `https://fran-portfolio.duckdns.org`. Port `8083` 
 
 Caddy is included in `docker-compose.yml`. It terminates TLS for `fran-portfolio.duckdns.org` and proxies to the frontend container.
 
+If another container already binds host port 80 (common when several apps share a VPS), move that app to another port first (for example `8084:80`). Caddy then owns 80/443, serves the portfolio over HTTPS, and the Caddyfile catch-all forwards other HTTP traffic to `8084`.
+
 Confirm DuckDNS points to the server's public IP, then:
 
 ```bash
 # In .env, include the HTTPS origin
 # CORS_ORIGINS=https://fran-portfolio.duckdns.org
 
-docker compose down && docker compose up -d --build
+docker compose up -d
 docker compose logs -f caddy
 ```
 
