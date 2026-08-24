@@ -231,7 +231,7 @@ The site is then available at `https://fran-portfolio.duckdns.org`. Port `8083` 
 
 Caddy is included in `docker-compose.yml`. It terminates TLS for `fran-portfolio.duckdns.org` and proxies to the frontend container.
 
-If another container already binds host port 80 (common when several apps share a VPS), move that app to another port first (for example `8084:80`). Caddy then owns 80/443, serves the portfolio over HTTPS, and the Caddyfile catch-all forwards other HTTP traffic to `8084`.
+If another container already binds host port 80 (common when several apps share a VPS), move that app to another port first (for example `8084:80`) and point its public mapping at `8084`. Caddy must be the only service on host ports 80 and 443 so Let's Encrypt can complete HTTP-01.
 
 Confirm DuckDNS points to the server's public IP, then:
 
