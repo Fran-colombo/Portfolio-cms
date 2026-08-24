@@ -1,7 +1,10 @@
 {
-	# Public 80/443 on this NAT host are not this VM, so HTTP-01/TLS-ALPN cannot work.
 	acme_dns duckdns {env.DUCKDNS_TOKEN}
 	auto_https disable_redirects
+}
+
+http://fran-portfolio.duckdns.org {
+	reverse_proxy frontend:80
 }
 
 fran-portfolio.duckdns.org {
