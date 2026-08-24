@@ -10,8 +10,6 @@ services:
   frontend:
     build: ./frontend
     container_name: portfolio-frontend
-    ports:
-      - "8083:80"
     depends_on:
       - backend
     restart: unless-stopped
@@ -25,7 +23,7 @@ services:
     ports:
       - "80:80"
       - "443:443"
-      - "443:443/udp"
+      - "8083:443"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
