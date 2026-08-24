@@ -1,0 +1,3 @@
+fran-portfolio.duckdns.org {
+	reverse_proxy frontend:80
+}

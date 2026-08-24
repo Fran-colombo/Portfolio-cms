@@ -9,6 +9,7 @@ portfolio-cms/
 ├── backend/          # FastAPI REST API + SQLite
 ├── frontend/         # React + Vite public site + admin panel
 ├── data/             # Persistent SQLite database (Docker volume)
+├── Caddyfile         # HTTPS reverse proxy (Let's Encrypt)
 └── docker-compose.yml
 ```
 
@@ -137,7 +138,7 @@ SECRET_KEY=your-long-random-secret-here
 ADMIN_EMAIL=you@yourdomain.com
 ADMIN_PASSWORD=your-secure-password
 DATABASE_URL=sqlite:////app/data/portfolio.db
-CORS_ORIGINS=http://your-server-ip:8083
+CORS_ORIGINS=https://fran-portfolio.duckdns.org,http://localhost:8083
 ```
 
 3. Start the application:
@@ -147,8 +148,9 @@ docker compose up -d --build
 ```
 
 4. Access:
-   - Public site: `http://your-server-ip:8083`
-   - Admin panel: `http://your-server-ip:8083/admin/login`
+   - Public site (HTTPS): `https://fran-portfolio.duckdns.org`
+   - Local HTTP fallback: `http://your-server-ip:8083`
+   - Admin panel: `https://fran-portfolio.duckdns.org/admin/login`
 
 The SQLite database is stored in `./data/` and persists across container restarts.
 
@@ -214,29 +216,32 @@ curl http://localhost:8083/api/health
 
 ### 6. Open firewall ports
 
+Caddy needs 80 and 443 on the public internet so Let's Encrypt can issue the certificate. Also forward those ports on the router to this machine.
+
 ```bash
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
 sudo ufw allow 8083/tcp
 sudo ufw enable
 ```
 
-Your portfolio is now accessible at `http://your-server-ip:8083`.
+The site is then available at `https://fran-portfolio.duckdns.org`. Port `8083` remains as a local HTTP fallback.
 
-### 7. (Optional) Add a custom domain with HTTPS
+### 7. HTTPS with Caddy
 
-Point your domain's DNS A record to the server IP, then install Certbot:
+Caddy is included in `docker-compose.yml`. It terminates TLS for `fran-portfolio.duckdns.org` and proxies to the frontend container.
 
-```bash
-sudo apt install -y certbot
-sudo certbot certonly --standalone -d your-domain.com
-```
-
-For HTTPS in production, place an nginx reverse proxy in front of Docker or use a tool like Caddy. A simple approach is to stop the frontend container's port 80 binding and run system nginx with SSL termination — or use a cloud load balancer with managed certificates.
-
-Update `CORS_ORIGINS` in `.env` to include `https://your-domain.com`, then restart:
+Confirm DuckDNS points to the server's public IP, then:
 
 ```bash
-docker compose down && docker compose up -d
+# In .env, include the HTTPS origin
+# CORS_ORIGINS=https://fran-portfolio.duckdns.org
+
+docker compose down && docker compose up -d --build
+docker compose logs -f caddy
 ```
+
+Caddy obtains and renews the Let's Encrypt certificate automatically once ports 80 and 443 are reachable from the internet.
 
 ### 8. Updating after changes
 
