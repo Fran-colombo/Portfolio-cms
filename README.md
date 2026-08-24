@@ -229,21 +229,18 @@ The site is then available at `https://fran-portfolio.duckdns.org`. Port `8083` 
 
 ### 7. HTTPS with Caddy
 
-Caddy is included in `docker-compose.yml`. It terminates TLS for `fran-portfolio.duckdns.org` and proxies to the frontend container.
+This host is behind NAT: public ports 80 and 443 belong to the provider, not the VM. Let's Encrypt HTTP-01 therefore cannot work. Caddy uses DuckDNS DNS-01 instead.
 
-If another container already binds host port 80 (common when several apps share a VPS), move that app to another port first (for example `8084:80`) and point its public mapping at `8084`. Caddy must be the only service on host ports 80 and 443 so Let's Encrypt can complete HTTP-01.
-
-Confirm DuckDNS points to the server's public IP, then:
+1. Copy your token from [duckdns.org](https://www.duckdns.org) into `.env` as `DUCKDNS_TOKEN`.
+2. In the port-mapping panel, add **public 443 → inner 443** if the provider allows it. If 443 stays on the provider, map a high port instead (for example public `10443` → inner `443`) and open `https://fran-portfolio.duckdns.org:10443`.
+3. Rebuild Caddy:
 
 ```bash
-# In .env, include the HTTPS origin
-# CORS_ORIGINS=https://fran-portfolio.duckdns.org
-
-docker compose up -d
+docker compose up -d --build caddy
 docker compose logs -f caddy
 ```
 
-Caddy obtains and renews the Let's Encrypt certificate automatically once ports 80 and 443 are reachable from the internet.
+Caddy obtains and renews the certificate via the DuckDNS API. Do not enable HTTP→HTTPS redirects to port 443 unless public 443 actually reaches this VM.
 
 ### 8. Updating after changes
 
