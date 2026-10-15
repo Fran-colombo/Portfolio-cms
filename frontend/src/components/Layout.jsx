@@ -1,4 +1,4 @@
-import { Link, NavLink, Outlet } from 'react-router-dom';
+import { Link, Outlet } from 'react-router-dom';
 import './Layout.css';
 
 export default function Layout() {
@@ -7,16 +7,14 @@ export default function Layout() {
       <header className="header">
         <div className="container header-inner">
           <Link to="/" className="logo">
-            Portfolio
+            <span className="logo-mark">K</span>
+            <span>
+              Conkreto <span className="logo-sub">/ directorio</span>
+            </span>
           </Link>
-          <nav className="nav">
-            <NavLink to="/" end className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}>
-              Home
-            </NavLink>
-            <NavLink to="/projects" className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}>
-              Projects
-            </NavLink>
-          </nav>
+          <Link to="/admin/login" className="header-admin-link">
+            Admin
+          </Link>
         </div>
       </header>
       <main>
@@ -24,10 +22,8 @@ export default function Layout() {
       </main>
       <footer className="footer">
         <div className="container footer-inner">
-          <p>Software projects showcase</p>
-          <Link to="/admin/login" className="footer-admin-link">
-            Admin
-          </Link>
+          <p>Conkreto · accesos internos</p>
+          <p className="footer-hint">Si un link no abre, probá estando en la red de la oficina o con la VPN.</p>
         </div>
       </footer>
     </div>

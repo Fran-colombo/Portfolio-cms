@@ -1,22 +1,24 @@
 :root {
-  --bg: #0b0d10;
-  --bg-elevated: #12151a;
-  --bg-card: #161a21;
-  --border: #252a33;
-  --text: #e8eaed;
-  --text-muted: #9aa3b2;
-  --accent: #3b82f6;
-  --accent-hover: #2563eb;
-  --accent-glow: rgba(59, 130, 246, 0.25);
-  --demo: #22c55e;
-  --demo-hover: #16a34a;
-  --danger: #ef4444;
-  --radius: 12px;
+  --bg: #e7e5e1;
+  --bg-elevated: #efeeea;
+  --bg-card: #f7f6f3;
+  --border: #d2cfc8;
+  --border-strong: #b9b5ad;
+  --text: #1d1c1a;
+  --text-muted: #6d6a64;
+  --accent: #f5b301;
+  --accent-hover: #e0a300;
+  --accent-ink: #1d1c1a;
+  --accent-glow: rgba(245, 179, 1, 0.35);
+  --ok: #2f9e44;
+  --danger: #d6336c;
+  --radius: 14px;
   --radius-sm: 8px;
-  --font: 'DM Sans', system-ui, sans-serif;
+  --font: 'Space Grotesk', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
-  --shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
-  --transition: 0.2s ease;
+  --shadow: 0 1px 0 rgba(0, 0, 0, 0.04), 0 8px 24px rgba(40, 36, 30, 0.08);
+  --shadow-hover: 0 1px 0 rgba(0, 0, 0, 0.04), 0 14px 36px rgba(40, 36, 30, 0.16);
+  --transition: 0.18s ease;
 }
 
 *,
@@ -32,9 +34,11 @@ html {
 body {
   margin: 0;
   font-family: var(--font);
-  background: var(--bg);
+  background-color: var(--bg);
+  background-image: radial-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+  background-size: 18px 18px;
   color: var(--text);
-  line-height: 1.6;
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -56,26 +60,13 @@ select {
 }
 
 .container {
-  width: min(1120px, 92%);
+  width: min(1180px, 92%);
   margin: 0 auto;
 }
 
 .page {
-  min-height: calc(100vh - 72px);
-  padding: 3rem 0 4rem;
-}
-
-.section-title {
-  font-size: clamp(1.75rem, 4vw, 2.25rem);
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  margin: 0 0 0.5rem;
-}
-
-.section-subtitle {
-  color: var(--text-muted);
-  margin: 0 0 2.5rem;
-  font-size: 1.05rem;
+  min-height: calc(100vh - 64px - 72px);
+  padding: 2.5rem 0 4rem;
 }
 
 .btn {
@@ -83,7 +74,7 @@ select {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 0.65rem 1.25rem;
+  padding: 0.6rem 1.15rem;
   border-radius: var(--radius-sm);
   border: 1px solid transparent;
   font-weight: 600;
@@ -100,33 +91,23 @@ select {
 
 .btn-primary {
   background: var(--accent);
-  color: white;
+  color: var(--accent-ink);
 }
 
 .btn-primary:hover:not(:disabled) {
   background: var(--accent-hover);
-  box-shadow: 0 0 20px var(--accent-glow);
-}
-
-.btn-demo {
-  background: var(--demo);
-  color: white;
-}
-
-.btn-demo:hover:not(:disabled) {
-  background: var(--demo-hover);
-  box-shadow: 0 0 20px rgba(34, 197, 94, 0.3);
+  box-shadow: 0 0 0 4px var(--accent-glow);
 }
 
 .btn-outline {
-  background: transparent;
+  background: var(--bg-card);
   border-color: var(--border);
   color: var(--text);
 }
 
 .btn-outline:hover:not(:disabled) {
-  border-color: var(--text-muted);
-  background: var(--bg-elevated);
+  border-color: var(--border-strong);
+  background: #fff;
 }
 
 .btn-danger {
@@ -136,22 +117,22 @@ select {
 }
 
 .btn-danger:hover:not(:disabled) {
-  background: rgba(239, 68, 68, 0.1);
+  background: rgba(214, 51, 108, 0.08);
 }
 
 .btn-sm {
-  padding: 0.4rem 0.85rem;
-  font-size: 0.82rem;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.8rem;
 }
 
 .tag {
   display: inline-block;
-  padding: 0.25rem 0.65rem;
+  padding: 0.15rem 0.55rem;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: 999px;
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: var(--text-muted);
 }
 
@@ -167,34 +148,8 @@ select {
   color: var(--danger);
 }
 
-.subsection-title {
-  font-size: 1.35rem;
-  font-weight: 600;
-  margin: 2.5rem 0 0.5rem;
-}
-
-.subsection-title:first-of-type {
-  margin-top: 0;
-}
-
-.incoming-heading {
-  margin-top: 3rem;
-  padding-top: 2rem;
-  border-top: 1px solid var(--border);
-}
-
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 1.5rem;
-}
-
 @media (max-width: 640px) {
   .page {
-    padding: 2rem 0 3rem;
-  }
-
-  .grid {
-    grid-template-columns: 1fr;
+    padding: 1.75rem 0 3rem;
   }
 }

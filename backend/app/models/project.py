@@ -12,6 +12,7 @@ class Project(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     slug: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
+    category: Mapped[str] = mapped_column(String(100), nullable=False, default="General")
     short_description: Mapped[str] = mapped_column(Text, nullable=False, default="")
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
     technologies: Mapped[list] = mapped_column(JSON, nullable=False, default=list)

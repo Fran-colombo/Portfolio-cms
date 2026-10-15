@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../api/client';
+import { displayHost } from '../../utils';
 
 export default function Dashboard() {
   const [projects, setProjects] = useState([]);
@@ -13,7 +14,13 @@ export default function Dashboard() {
     setError(null);
     api
       .getAdminProjects()
-      .then(setProjects)
+      .then((list) =>
+        setProjects(
+          [...list].sort(
+            (a, b) => a.category.localeCompare(b.category, 'es') || a.display_order - b.display_order,
+          ),
+        ),
+      )
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   };
@@ -23,7 +30,7 @@ export default function Dashboard() {
   }, []);
 
   const handleDelete = async (project) => {
-    if (!window.confirm(`Delete "${project.title}"? This cannot be undone.`)) {
+    if (!window.confirm(`¿Borrar "${project.title}"? No se puede deshacer.`)) {
       return;
     }
 
@@ -51,19 +58,19 @@ export default function Dashboard() {
   return (
     <div>
       <div className="admin-page-header">
-        <h1>Projects</h1>
+        <h1>Accesos</h1>
         <Link to="/admin/projects/new" className="btn btn-primary">
-          New project
+          Nuevo acceso
         </Link>
       </div>
 
-      {loading && <div className="loading">Loading projects...</div>}
+      {loading && <div className="loading">Cargando...</div>}
       {error && <div className="error-state">{error}</div>}
       {actionError && <p className="form-error">{actionError}</p>}
 
       {!loading && !error && projects.length === 0 && (
         <div className="empty-state">
-          No projects yet. <Link to="/admin/projects/new">Create your first project</Link>.
+          Todavía no hay accesos. <Link to="/admin/projects/new">Cargá el primero</Link>.
         </div>
       )}
 
@@ -72,50 +79,62 @@ export default function Dashboard() {
           <table className="admin-table">
             <thead>
               <tr>
-                <th>Title</th>
-                <th>Slug</th>
-                <th>Order</th>
-                <th>Status</th>
-                <th>Type</th>
-                <th>Actions</th>
+                <th>Carpeta</th>
+                <th>Nombre</th>
+                <th>URL / IP</th>
+                <th>Orden</th>
+                <th>Estado</th>
+                <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
               {projects.map((project) => (
                 <tr key={project.id}>
+                  <td>
+                    <span className="tag">{project.category}</span>
+                  </td>
                   <td>{project.title}</td>
-                  <td>{project.slug}</td>
+                  <td className="admin-mono">
+                    {project.demo_url ? (
+                      <a href={project.demo_url} target="_blank" rel="noopener noreferrer">
+                        {displayHost(project.demo_url)}
+                      </a>
+                    ) : (
+                      '—'
+                    )}
+                  </td>
                   <td>{project.display_order}</td>
                   <td>
                     <span
-                      className={`status-badge ${project.published ? 'status-published' : 'status-draft'}`}
+                      className={`status-badge ${
+                        !project.published
+                          ? 'status-draft'
+                          : project.is_incoming
+                            ? 'status-incoming'
+                            : 'status-published'
+                      }`}
                     >
-                      {project.published ? 'Published' : 'Draft'}
-                    </span>
-                  </td>
-                  <td>
-                    <span className={`status-badge ${project.is_incoming ? 'status-incoming' : 'status-live'}`}>
-                      {project.is_incoming ? 'Incoming' : 'Live'}
+                      {!project.published ? 'Oculto' : project.is_incoming ? 'Próximamente' : 'Visible'}
                     </span>
                   </td>
                   <td>
                     <div className="admin-actions">
                       <Link to={`/admin/projects/${project.id}/edit`} className="btn btn-outline btn-sm">
-                        Edit
+                        Editar
                       </Link>
                       <button
                         type="button"
                         className="btn btn-outline btn-sm"
                         onClick={() => handleTogglePublish(project)}
                       >
-                        {project.published ? 'Unpublish' : 'Publish'}
+                        {project.published ? 'Ocultar' : 'Mostrar'}
                       </button>
                       <button
                         type="button"
                         className="btn btn-danger btn-sm"
                         onClick={() => handleDelete(project)}
                       >
-                        Delete
+                        Borrar
                       </button>
                     </div>
                   </td>

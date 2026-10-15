@@ -1,6 +1,5 @@
 .admin-layout {
   min-height: 100vh;
-  background: var(--bg);
 }
 
 .admin-header {
@@ -17,8 +16,16 @@
 }
 
 .admin-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
   font-weight: 700;
-  font-size: 1.1rem;
+  font-size: 1.05rem;
+}
+
+.admin-logo-sub {
+  color: var(--text-muted);
+  font-weight: 500;
 }
 
 .admin-user {
@@ -53,8 +60,19 @@
 
 .admin-table-wrap {
   overflow-x: auto;
+  background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.admin-mono {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+
+.admin-mono a:hover {
+  text-decoration: underline;
 }
 
 .admin-table {
@@ -92,23 +110,18 @@
 }
 
 .status-published {
-  background: rgba(34, 197, 94, 0.15);
-  color: var(--demo);
+  background: rgba(47, 158, 68, 0.14);
+  color: var(--ok);
 }
 
 .status-draft {
-  background: rgba(154, 163, 178, 0.15);
+  background: rgba(109, 106, 100, 0.14);
   color: var(--text-muted);
 }
 
 .status-incoming {
-  background: rgba(251, 191, 36, 0.15);
-  color: #fbbf24;
-}
-
-.status-live {
-  background: rgba(59, 130, 246, 0.15);
-  color: var(--accent);
+  background: rgba(245, 179, 1, 0.2);
+  color: #8a6500;
 }
 
 .admin-actions {
@@ -149,6 +162,19 @@
 .form-group textarea:focus {
   outline: none;
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.form-hint {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.form-checks {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.5rem;
 }
 
 .form-group textarea {
@@ -197,6 +223,7 @@
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
+  box-shadow: var(--shadow);
   padding: 2rem;
 }
 

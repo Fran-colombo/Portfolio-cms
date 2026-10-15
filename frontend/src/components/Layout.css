@@ -2,8 +2,8 @@
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(11, 13, 16, 0.85);
-  backdrop-filter: blur(12px);
+  background: rgba(231, 229, 225, 0.88);
+  backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border);
 }
 
@@ -11,37 +11,55 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 72px;
+  height: 64px;
 }
 
 .logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
   font-weight: 700;
-  font-size: 1.15rem;
-  letter-spacing: -0.02em;
+  font-size: 1.1rem;
+  letter-spacing: -0.01em;
 }
 
-.nav {
-  display: flex;
-  gap: 1.5rem;
+.logo-mark {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--text);
+  color: var(--accent);
+  font-weight: 700;
 }
 
-.nav-link {
+.logo-sub {
   color: var(--text-muted);
   font-weight: 500;
-  font-size: 0.95rem;
-  transition: color var(--transition);
 }
 
-.nav-link:hover,
-.nav-link.active {
+.header-admin-link {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  transition: all var(--transition);
+}
+
+.header-admin-link:hover {
   color: var(--text);
+  border-color: var(--border-strong);
+  background: var(--bg-card);
 }
 
 .footer {
   border-top: 1px solid var(--border);
-  padding: 2rem 0;
+  padding: 1.5rem 0;
   color: var(--text-muted);
-  font-size: 0.875rem;
+  font-size: 0.82rem;
 }
 
 .footer-inner {
@@ -49,18 +67,9 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .footer p {
   margin: 0;
-}
-
-.footer-admin-link {
-  color: var(--text-muted);
-  font-size: 0.82rem;
-  transition: color var(--transition);
-}
-
-.footer-admin-link:hover {
-  color: var(--text);
 }

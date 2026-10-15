@@ -19,6 +19,7 @@ def _project_to_dict(data: ProjectCreate | ProjectUpdate) -> dict:
     return {
         "title": data.title,
         "slug": data.slug,
+        "category": data.category.strip(),
         "short_description": data.short_description,
         "description": data.description,
         "technologies": data.technologies,

@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, HttpUrl
 class ProjectBase(BaseModel):
     title: str = Field(min_length=1, max_length=255)
     slug: str = Field(min_length=1, max_length=255, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+    category: str = Field(default="General", min_length=1, max_length=100)
     short_description: str = ""
     description: str = ""
     technologies: list[str] = Field(default_factory=list)
@@ -31,6 +32,7 @@ class ProjectResponse(BaseModel):
     id: int
     title: str
     slug: str
+    category: str
     short_description: str
     description: str
     technologies: list[str]

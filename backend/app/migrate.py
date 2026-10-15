@@ -17,6 +17,12 @@ def migrate() -> None:
                 text("ALTER TABLE projects ADD COLUMN is_incoming BOOLEAN NOT NULL DEFAULT 0")
             )
 
+    if "category" not in columns:
+        with engine.begin() as conn:
+            conn.execute(
+                text("ALTER TABLE projects ADD COLUMN category VARCHAR(100) NOT NULL DEFAULT 'General'")
+            )
+
 
 if __name__ == "__main__":
     migrate()

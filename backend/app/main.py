@@ -14,7 +14,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="Portfolio CMS API", lifespan=lifespan)
+app = FastAPI(title="Directorio Conkreto API", lifespan=lifespan)
 
 origins = [origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()]
 app.add_middleware(

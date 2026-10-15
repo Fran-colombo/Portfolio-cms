@@ -34,8 +34,8 @@ export default function Login() {
   return (
     <div className="login-page">
       <div className="login-card">
-        <h1>Admin login</h1>
-        <p>Sign in to manage portfolio projects.</p>
+        <h1>Admin Conkreto</h1>
+        <p>Ingresá para gestionar los accesos del directorio.</p>
         <form className="admin-form" onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="email">Email</label>
@@ -49,7 +49,7 @@ export default function Login() {
             />
           </div>
           <div className="form-group">
-            <label htmlFor="password">Password</label>
+            <label htmlFor="password">Contraseña</label>
             <input
               id="password"
               type="password"
@@ -61,7 +61,7 @@ export default function Login() {
           </div>
           {error && <p className="form-error">{error}</p>}
           <button type="submit" className="btn btn-primary" disabled={loading}>
-            {loading ? 'Signing in...' : 'Sign in'}
+            {loading ? 'Ingresando...' : 'Ingresar'}
           </button>
         </form>
       </div>

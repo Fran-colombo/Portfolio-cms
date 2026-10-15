@@ -1,10 +1,8 @@
-import { Routes, Route } from 'react-router-dom';
+import { Navigate, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import AdminLayout from './components/AdminLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import Home from './pages/Home';
-import Projects from './pages/Projects';
-import ProjectDetail from './pages/ProjectDetail';
 import Login from './pages/admin/Login';
 import Dashboard from './pages/admin/Dashboard';
 import ProjectForm from './pages/admin/ProjectForm';
@@ -14,8 +12,6 @@ export default function App() {
     <Routes>
       <Route element={<Layout />}>
         <Route index element={<Home />} />
-        <Route path="projects" element={<Projects />} />
-        <Route path="projects/:slug" element={<ProjectDetail />} />
       </Route>
 
       <Route path="/admin/login" element={<Login />} />
@@ -33,6 +29,8 @@ export default function App() {
         <Route path="projects/new" element={<ProjectForm />} />
         <Route path="projects/:id/edit" element={<ProjectForm />} />
       </Route>
+
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

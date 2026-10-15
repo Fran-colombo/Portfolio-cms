@@ -1,70 +1,104 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client';
-import ProjectCard from '../components/ProjectCard';
+import { displayHost, groupByCategory } from '../utils';
 import './Home.css';
 
+function PageLink({ page }) {
+  const pending = page.is_incoming || !page.demo_url;
+
+  const content = (
+    <>
+      <span className="page-icon">
+        {page.image_url ? <img src={page.image_url} alt="" /> : page.title.charAt(0).toUpperCase()}
+      </span>
+      <span className="page-info">
+        <span className="page-title">{page.title}</span>
+        {page.short_description && <span className="page-desc">{page.short_description}</span>}
+        <span className="page-host">{pending ? 'Próximamente' : displayHost(page.demo_url)}</span>
+      </span>
+      {!pending && <span className="page-arrow">↗</span>}
+    </>
+  );
+
+  if (pending) {
+    return <div className="page-link page-link-pending">{content}</div>;
+  }
+
+  return (
+    <a className="page-link" href={page.demo_url} target="_blank" rel="noopener noreferrer">
+      {content}
+    </a>
+  );
+}
+
 export default function Home() {
-  const [projects, setProjects] = useState([]);
-  const [incoming, setIncoming] = useState([]);
+  const [pages, setPages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [query, setQuery] = useState('');
 
   useEffect(() => {
     Promise.all([api.getProjects(), api.getIncomingProjects()])
-      .then(([live, inProgress]) => {
-        setProjects(live);
-        setIncoming(inProgress);
-      })
+      .then(([live, incoming]) => setPages([...live, ...incoming]))
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }, []);
 
+  const folders = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const filtered = q
+      ? pages.filter((p) =>
+          [p.title, p.short_description, p.category, p.demo_url]
+            .filter(Boolean)
+            .some((field) => field.toLowerCase().includes(q)),
+        )
+      : pages;
+    return groupByCategory(filtered);
+  }, [pages, query]);
+
   return (
     <div className="page home">
-      <section className="hero container">
-        <p className="hero-label">Software Developer</p>
-        <h1 className="hero-title">Projects built to solve real problems</h1>
-        <p className="hero-subtitle">
-          Hi, I&apos;m Francesco — a software developer who builds practical apps and ships projects end to end,
-          from idea to working demos.
-        </p>
-        <Link to="/projects" className="btn btn-primary">
-          View all projects
-        </Link>
+      <section className="home-head container">
+        <div>
+          <p className="home-label">Directorio interno</p>
+          <h1 className="home-title">Todos los accesos de Conkreto, en un solo lugar.</h1>
+        </div>
+        <input
+          type="search"
+          className="home-search"
+          placeholder="Buscar página, carpeta o IP..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
       </section>
 
-      <section className="featured container">
-        <h2 className="section-title">Live projects</h2>
-        <p className="section-subtitle">Explore working demos and detailed project breakdowns.</p>
-
-        {loading && <div className="loading">Loading projects...</div>}
+      <section className="container">
+        {loading && <div className="loading">Cargando accesos...</div>}
         {error && <div className="error-state">{error}</div>}
-        {!loading && !error && projects.length === 0 && (
-          <div className="empty-state">No live projects yet.</div>
+        {!loading && !error && pages.length === 0 && (
+          <div className="empty-state">Todavía no hay páginas cargadas. Agregalas desde el admin.</div>
         )}
-        {!loading && !error && projects.length > 0 && (
-          <div className="grid">
-            {projects.map((project) => (
-              <ProjectCard key={project.id} project={project} />
-            ))}
-          </div>
+        {!loading && !error && pages.length > 0 && folders.length === 0 && (
+          <div className="empty-state">Nada coincide con &quot;{query}&quot;.</div>
         )}
-      </section>
 
-      {!loading && !error && incoming.length > 0 && (
-        <section className="featured incoming-section container">
-          <h2 className="section-title">Incoming</h2>
-          <p className="section-subtitle">
-            Work in progress — details available, demos coming soon.
-          </p>
-          <div className="grid">
-            {incoming.map((project) => (
-              <ProjectCard key={project.id} project={project} incoming />
-            ))}
-          </div>
-        </section>
-      )}
+        <div className="folders">
+          {folders.map(([category, items]) => (
+            <article key={category} className="folder">
+              <header className="folder-head">
+                <span className="folder-icon" aria-hidden="true" />
+                <h2 className="folder-name">{category}</h2>
+                <span className="folder-count">{items.length}</span>
+              </header>
+              <div className="folder-body">
+                {items.map((page) => (
+                  <PageLink key={page.id} page={page} />
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }
