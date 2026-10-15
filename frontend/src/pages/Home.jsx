@@ -8,15 +8,15 @@ function PageLink({ page }) {
 
   const content = (
     <>
-      <span className="page-icon">
-        {page.image_url ? <img src={page.image_url} alt="" /> : page.title.charAt(0).toUpperCase()}
+      <span className="page-top">
+        <span className="page-icon">
+          {page.image_url ? <img src={page.image_url} alt="" /> : page.title.charAt(0).toUpperCase()}
+        </span>
+        <span className="page-arrow">{pending ? '' : '↗'}</span>
       </span>
-      <span className="page-info">
-        <span className="page-title">{page.title}</span>
-        {page.short_description && <span className="page-desc">{page.short_description}</span>}
-        <span className="page-host">{pending ? 'Próximamente' : displayHost(page.demo_url)}</span>
-      </span>
-      {!pending && <span className="page-arrow">↗</span>}
+      <span className="page-title">{page.title}</span>
+      {page.short_description && <span className="page-desc">{page.short_description}</span>}
+      <span className="page-host">{pending ? 'Próximamente' : displayHost(page.demo_url)}</span>
     </>
   );
 
@@ -44,6 +44,8 @@ export default function Home() {
       .finally(() => setLoading(false));
   }, []);
 
+  const folderCount = useMemo(() => new Set(pages.map((p) => p.category)).size, [pages]);
+
   const folders = useMemo(() => {
     const q = query.trim().toLowerCase();
     const filtered = q
@@ -62,6 +64,12 @@ export default function Home() {
         <div>
           <p className="home-label">Directorio interno</p>
           <h1 className="home-title">Todos los accesos de Conkreto, en un solo lugar.</h1>
+          {!loading && !error && (
+            <p className="home-stats">
+              {pages.length} {pages.length === 1 ? 'página' : 'páginas'} · {folderCount}{' '}
+              {folderCount === 1 ? 'carpeta' : 'carpetas'}
+            </p>
+          )}
         </div>
         <input
           type="search"
@@ -85,7 +93,7 @@ export default function Home() {
         <div className="folders">
           {folders.map(([category, items]) => (
             <article key={category} className="folder">
-              <header className="folder-head">
+              <header className="folder-tab">
                 <span className="folder-icon" aria-hidden="true" />
                 <h2 className="folder-name">{category}</h2>
                 <span className="folder-count">{items.length}</span>

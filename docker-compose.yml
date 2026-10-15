@@ -16,6 +16,7 @@ services:
 
   caddy:
     build: ./caddy
+    image: conkreto/caddy-duckdns:2
     container_name: portfolio-caddy
     dns:
       - 8.8.8.8
