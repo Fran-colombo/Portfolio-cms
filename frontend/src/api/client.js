@@ -49,8 +49,20 @@ async function request(path, options = {}) {
   const data = await response.json().catch(() => null);
 
   if (!response.ok) {
-    const message = data?.detail || 'Request failed';
-    throw new Error(typeof message === 'string' ? message : JSON.stringify(message));
+    const detail = data?.detail;
+    let message = 'Request failed';
+    if (typeof detail === 'string') {
+      message = detail;
+    } else if (Array.isArray(detail)) {
+      const text = detail
+        .map((item) => item?.msg)
+        .filter(Boolean)
+        .join('. ');
+      message = text.includes('valid email') ? 'El email no es válido' : text || message;
+    } else if (detail) {
+      message = JSON.stringify(detail);
+    }
+    throw new Error(message);
   }
 
   return data;
@@ -66,7 +78,36 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     }),
+  totpSetup: (pendingToken) =>
+    request('/api/auth/totp/setup', {
+      method: 'POST',
+      body: JSON.stringify({ pending_token: pendingToken }),
+    }),
+  verifyTotp: (pendingToken, code) =>
+    request('/api/auth/totp/verify', {
+      method: 'POST',
+      body: JSON.stringify({ pending_token: pendingToken, code }),
+    }),
   me: () => request('/api/auth/me'),
+  getUsers: () => request('/api/admin/users'),
+  createUser: (payload) =>
+    request('/api/admin/users', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateUser: (id, payload) =>
+    request(`/api/admin/users/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
+  deleteUser: (id) =>
+    request(`/api/admin/users/${id}`, {
+      method: 'DELETE',
+    }),
+  resetUserTotp: (id) =>
+    request(`/api/admin/users/${id}/reset-totp`, {
+      method: 'POST',
+    }),
   createProject: (payload) =>
     request('/api/projects', {
       method: 'POST',

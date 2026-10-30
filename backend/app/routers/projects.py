@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.dependencies import get_current_user
+from app.dependencies import get_current_admin, get_current_user
 from app.models.project import Project
 from app.models.user import User
 from app.schemas.project import (
@@ -35,7 +35,10 @@ def _project_to_dict(data: ProjectCreate | ProjectUpdate) -> dict:
 
 
 @router.get("/projects", response_model=list[ProjectResponse])
-def list_published_projects(db: Session = Depends(get_db)):
+def list_published_projects(
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
     projects = (
         db.query(Project)
         .filter(Project.published.is_(True), Project.is_incoming.is_(False))
@@ -46,7 +49,10 @@ def list_published_projects(db: Session = Depends(get_db)):
 
 
 @router.get("/projects/incoming", response_model=list[ProjectResponse])
-def list_incoming_projects(db: Session = Depends(get_db)):
+def list_incoming_projects(
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
     projects = (
         db.query(Project)
         .filter(Project.published.is_(True), Project.is_incoming.is_(True))
@@ -57,7 +63,11 @@ def list_incoming_projects(db: Session = Depends(get_db)):
 
 
 @router.get("/projects/{slug}", response_model=ProjectResponse)
-def get_published_project(slug: str, db: Session = Depends(get_db)):
+def get_published_project(
+    slug: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
     project = db.query(Project).filter(Project.slug == slug, Project.published.is_(True)).first()
     if not project:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
@@ -67,7 +77,7 @@ def get_published_project(slug: str, db: Session = Depends(get_db)):
 @router.get("/admin/projects", response_model=list[ProjectResponse])
 def list_all_projects(
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(get_current_admin),
 ):
     projects = (
         db.query(Project)
@@ -81,7 +91,7 @@ def list_all_projects(
 def create_project(
     payload: ProjectCreate,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(get_current_admin),
 ):
     existing = db.query(Project).filter(Project.slug == payload.slug).first()
     if existing:
@@ -99,7 +109,7 @@ def update_project(
     project_id: int,
     payload: ProjectUpdate,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(get_current_admin),
 ):
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
@@ -125,7 +135,7 @@ def update_project(
 def delete_project(
     project_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(get_current_admin),
 ):
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
@@ -140,7 +150,7 @@ def delete_project(
 def toggle_publish(
     project_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(get_current_admin),
 ):
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:

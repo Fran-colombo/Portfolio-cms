@@ -15,8 +15,12 @@ def seed() -> None:
             admin = User(
                 email=settings.admin_email,
                 password_hash=hash_password(settings.admin_password),
+                role="admin",
+                is_active=True,
             )
             db.add(admin)
+        elif admin.role != "admin":
+            admin.role = "admin"
 
         db.commit()
     finally:

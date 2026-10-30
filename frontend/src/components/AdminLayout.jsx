@@ -1,4 +1,4 @@
-import { Link, Outlet, useNavigate } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import './Layout.css';
 import './AdminLayout.css';
@@ -6,10 +6,12 @@ import './AdminLayout.css';
 export default function AdminLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const onUsers = location.pathname.startsWith('/admin/users');
 
   const handleLogout = () => {
     logout();
-    navigate('/admin/login');
+    navigate('/login');
   };
 
   return (
@@ -23,6 +25,14 @@ export default function AdminLayout() {
             </Link>
             {user && <span className="admin-user">{user.email}</span>}
           </div>
+          <nav className="admin-nav">
+            <Link to="/admin" className={`admin-nav-link${!onUsers ? ' active' : ''}`}>
+              Accesos
+            </Link>
+            <Link to="/admin/users" className={`admin-nav-link${onUsers ? ' active' : ''}`}>
+              Usuarios
+            </Link>
+          </nav>
           <div className="admin-header-actions">
             <Link to="/" className="btn btn-outline btn-sm">
               Ver directorio

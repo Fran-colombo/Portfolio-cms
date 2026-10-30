@@ -12,22 +12,23 @@ def reset_admin_password() -> None:
 
         admin = db.query(User).filter(User.email == email).first()
         if not admin:
-            admin = User(email=email, password_hash=hash_password(password))
+            admin = User(
+                email=email,
+                password_hash=hash_password(password),
+                role="admin",
+                is_active=True,
+            )
             db.add(admin)
             print(f"Admin user created: {email}")
         else:
             admin.password_hash = hash_password(password)
-            print(f"Admin password updated for: {email}")
-
-        # Remove duplicate admin accounts with other emails
-        duplicates = db.query(User).filter(User.email != email).all()
-        for dup in duplicates:
-            print(f"Removing duplicate admin: {dup.email}")
-            db.delete(dup)
+            admin.role = "admin"
+            admin.is_active = True
+            admin.totp_secret = None
+            print(f"Admin password updated and authenticator reset for: {email}")
 
         db.commit()
 
-        # Verify the password works
         admin = db.query(User).filter(User.email == email).first()
         ok = verify_password(password, admin.password_hash)
         print(f"Password verification: {'OK' if ok else 'FAILED'}")

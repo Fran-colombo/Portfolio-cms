@@ -1,7 +1,16 @@
-import { Link, Outlet } from 'react-router-dom';
+import { Link, Outlet, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import './Layout.css';
 
 export default function Layout() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
   return (
     <div className="layout">
       <header className="header">
@@ -12,9 +21,16 @@ export default function Layout() {
               Conkreto <span className="logo-sub">/ directorio</span>
             </span>
           </Link>
-          <Link to="/admin/login" className="header-admin-link">
-            Admin
-          </Link>
+          <div className="header-actions">
+            {user?.role === 'admin' && (
+              <Link to="/admin" className="header-admin-link">
+                Admin
+              </Link>
+            )}
+            <button type="button" className="header-admin-link" onClick={handleLogout}>
+              Salir
+            </button>
+          </div>
         </div>
       </header>
       <main>

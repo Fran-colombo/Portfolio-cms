@@ -39,6 +39,12 @@
   font-weight: 500;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .header-admin-link {
   color: var(--text-muted);
   font-size: 0.85rem;
@@ -46,6 +52,8 @@
   padding: 0.35rem 0.75rem;
   border: 1px solid var(--border);
   border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
   transition: all var(--transition);
 }
 

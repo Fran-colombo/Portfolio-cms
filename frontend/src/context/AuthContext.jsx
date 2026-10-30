@@ -12,13 +12,32 @@ export function AuthProvider({ children }) {
     setUser(null);
   }, []);
 
-  const login = useCallback(async (email, password) => {
-    const data = await api.login(email, password);
-    setToken(data.access_token);
+  const establishSession = useCallback(async (accessToken) => {
+    setToken(accessToken);
     const me = await api.me();
     setUser(me);
     return me;
   }, []);
+
+  const login = useCallback(
+    async (email, password) => {
+      const data = await api.login(email, password);
+      if (data.status === 'authenticated') {
+        const me = await establishSession(data.access_token);
+        return { status: 'authenticated', user: me };
+      }
+      return { status: data.status, pendingToken: data.pending_token };
+    },
+    [establishSession],
+  );
+
+  const completeTotp = useCallback(
+    async (pendingToken, code) => {
+      const data = await api.verifyTotp(pendingToken, code);
+      return establishSession(data.access_token);
+    },
+    [establishSession],
+  );
 
   useEffect(() => {
     const token = getToken();
@@ -39,10 +58,12 @@ export function AuthProvider({ children }) {
       user,
       loading,
       isAuthenticated: Boolean(user),
+      isAdmin: user?.role === 'admin',
       login,
+      completeTotp,
       logout,
     }),
-    [user, loading, login, logout],
+    [user, loading, login, completeTotp, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
