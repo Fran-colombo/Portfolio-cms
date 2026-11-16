@@ -220,6 +220,17 @@ export default function Cauciones() {
   const [calcError, setCalcError] = useState(null);
   const [calculating, setCalculating] = useState(false);
 
+  const [rollForm, setRollForm] = useState(() => ({
+    monto: '',
+    tna: '',
+    cada: '2',
+    durante: '20',
+    fecha_inicio: todayInput(),
+  }));
+  const [rollResult, setRollResult] = useState(null);
+  const [rollError, setRollError] = useState(null);
+  const [rolling, setRolling] = useState(false);
+
   const [rows, setRows] = useState(loadDraft);
   const [compareResult, setCompareResult] = useState(null);
   const [compareError, setCompareError] = useState(null);
@@ -456,6 +467,47 @@ export default function Cauciones() {
       setCalcError(err.message);
     } finally {
       setCalculating(false);
+    }
+  };
+
+  const handleRoll = async (event) => {
+    event.preventDefault();
+    setRollError(null);
+    setRolling(true);
+    try {
+      const monto = Number(rollForm.monto);
+      const tna = Number(rollForm.tna);
+      const cada = Number(rollForm.cada);
+      const durante = Number(rollForm.durante);
+      if (!Number.isFinite(monto) || monto <= 0) {
+        throw new Error('El monto tiene que ser mayor a cero');
+      }
+      if (!Number.isFinite(tna) || tna <= 0) {
+        throw new Error('La TNA tiene que ser mayor a cero');
+      }
+      if (!Number.isInteger(cada) || cada < 1) {
+        throw new Error('Los días de cada renovación tienen que ser un entero de 1 o más');
+      }
+      if (!Number.isInteger(durante) || durante < cada) {
+        throw new Error('El plazo tiene que alcanzar para aunque sea una renovación');
+      }
+      if (!rollForm.fecha_inicio) {
+        throw new Error('Falta la fecha de inicio');
+      }
+      setRollResult(
+        await api.proyectarCaucion({
+          monto,
+          tna,
+          cada,
+          durante,
+          fecha_inicio: rollForm.fecha_inicio,
+        }),
+      );
+    } catch (err) {
+      setRollResult(null);
+      setRollError(err.message);
+    } finally {
+      setRolling(false);
     }
   };
 
@@ -737,6 +789,88 @@ export default function Cauciones() {
       </section>
 
       <section className="caucion-section">
+        <h2>Si lo renovás</h2>
+        <p className="caucion-lead">
+          No se guarda. Dejás un monto a una tasa promedio y lo volvés a colocar cada tantos días, durante el plazo que elijas.
+        </p>
+        <form className="admin-form" onSubmit={handleRoll}>
+          <div className="caucion-fields caucion-fields-roll">
+            <div className="form-group">
+              <label htmlFor="roll-monto">Monto</label>
+              <input
+                id="roll-monto"
+                type="number"
+                min="0"
+                step="0.01"
+                value={rollForm.monto}
+                onChange={(event) => setRollForm((prev) => ({ ...prev, monto: event.target.value }))}
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label htmlFor="roll-tna">TNA promedio %</label>
+              <input
+                id="roll-tna"
+                type="number"
+                min="0"
+                step="0.01"
+                value={rollForm.tna}
+                onChange={(event) => setRollForm((prev) => ({ ...prev, tna: event.target.value }))}
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label htmlFor="roll-cada">Renovás cada</label>
+              <input
+                id="roll-cada"
+                type="number"
+                min="1"
+                step="1"
+                value={rollForm.cada}
+                onChange={(event) => setRollForm((prev) => ({ ...prev, cada: event.target.value }))}
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label htmlFor="roll-durante">Durante (días)</label>
+              <input
+                id="roll-durante"
+                type="number"
+                min="1"
+                step="1"
+                value={rollForm.durante}
+                onChange={(event) => setRollForm((prev) => ({ ...prev, durante: event.target.value }))}
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label htmlFor="roll-inicio">Desde</label>
+              <input
+                id="roll-inicio"
+                type="date"
+                value={rollForm.fecha_inicio}
+                onChange={(event) => setRollForm((prev) => ({ ...prev, fecha_inicio: event.target.value }))}
+                required
+              />
+            </div>
+          </div>
+          <div className="form-actions">
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => setRollForm((prev) => ({ ...prev, durante: '20' }))}>
+              20 días
+            </button>
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => setRollForm((prev) => ({ ...prev, durante: '30' }))}>
+              Un mes (30 días)
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={rolling}>
+              {rolling ? 'Calculando...' : 'Calcular'}
+            </button>
+          </div>
+          {rollError && <p className="form-error">{rollError}</p>}
+        </form>
+        <Proyeccion data={rollResult} />
+      </section>
+
+      <section className="caucion-section">
         <h2>Comparar</h2>
         <p className="caucion-lead">
           Misma cuenta. No se guardan. El orden de arriba es el que más conviene por tasa y plazo; el de abajo, el que deja más pesos.
@@ -907,6 +1041,81 @@ export default function Cauciones() {
           </div>
         </Modal>
       )}
+    </div>
+  );
+}
+
+function Proyeccion({ data }) {
+  if (!data) return null;
+  return (
+    <div className="caucion-result">
+      <div className="caucion-result-head">
+        <strong>{data.vueltas} {data.vueltas === 1 ? 'vuelta' : 'vueltas'}</strong>
+        <strong>{ars(data.interes)}</strong>
+      </div>
+      <p>
+        {ars(data.monto_inicial)} al {pct(data.tna)}, renovado cada {data.cada} días desde el {fecha(data.fecha_inicio)}.
+        Al {fecha(data.fecha_fin)} quedan {ars(data.monto_final)}.
+      </p>
+      <dl className="caucion-metrics">
+        <div>
+          <dt>Genera</dt>
+          <dd>{ars(data.interes)}</dd>
+        </div>
+        <div>
+          <dt>Queda</dt>
+          <dd>{ars(data.monto_final)}</dd>
+        </div>
+        <div>
+          <dt>Días que rinden</dt>
+          <dd>{data.dias_rendidos}</dd>
+        </div>
+        <div>
+          <dt>Días parados</dt>
+          <dd>{data.dias_parados}</dd>
+        </div>
+        <div>
+          <dt>Sin reinvertir</dt>
+          <dd>{ars(data.interes_sin_reinvertir)}</dd>
+        </div>
+        <div>
+          <dt>Vueltas</dt>
+          <dd>{data.vueltas}</dd>
+        </div>
+      </dl>
+      <ul className="caucion-notes">
+        {data.notas.map((note) => (
+          <li key={note}>{note}</li>
+        ))}
+      </ul>
+      <div className="admin-table-wrap caucion-roll-table">
+        <table className="admin-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Inicio</th>
+              <th>Vence</th>
+              <th>Renovás</th>
+              <th>Parados</th>
+              <th>Interés</th>
+              <th>Queda</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.detalle.map((vuelta) => (
+              <tr key={vuelta.numero}>
+                <td>{vuelta.numero}</td>
+                <td>{fecha(vuelta.fecha_inicio)}</td>
+                <td>{fecha(vuelta.fecha_vencimiento)}</td>
+                <td>{fecha(vuelta.fecha_renovacion)}</td>
+                <td>{vuelta.dias_parados}</td>
+                <td>{ars(vuelta.interes)}</td>
+                <td>{ars(vuelta.monto_final)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

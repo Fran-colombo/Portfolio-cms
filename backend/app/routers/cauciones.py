@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.cauciones.alerts import smtp_configurado
-from app.cauciones.calc import evaluar, orden_veredicto
+from app.cauciones.calc import evaluar, orden_veredicto, proyectar
 from app.cauciones.calendar import load_holidays, years_covering
 from app.cauciones.clock import ahora_art
 from app.cauciones.service import (
@@ -33,6 +33,8 @@ from app.schemas.caucion import (
     Perfil,
     PersonaIn,
     PersonaOut,
+    Proyeccion,
+    ProyeccionIn,
     ResultadoCaucion,
 )
 
@@ -288,6 +290,25 @@ def calcular(
 ):
     book = load_holidays(years_covering(payload.fecha_inicio, payload.dias))
     return evaluar(payload.monto, payload.tna, payload.dias, payload.fecha_inicio, book)
+
+
+@router.post("/proyectar", response_model=Proyeccion)
+def proyectar_caucion(
+    payload: ProyeccionIn,
+    _: User = Depends(get_current_admin),
+):
+    book = load_holidays(years_covering(payload.fecha_inicio, payload.durante + payload.cada))
+    try:
+        return proyectar(
+            payload.monto,
+            payload.tna,
+            payload.cada,
+            payload.durante,
+            payload.fecha_inicio,
+            book,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
 @router.post("/comparar", response_model=Comparacion)

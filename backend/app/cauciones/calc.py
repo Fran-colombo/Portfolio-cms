@@ -9,7 +9,15 @@ from __future__ import annotations
 from datetime import date, timedelta
 from decimal import Decimal, ROUND_HALF_UP
 
-from app.cauciones.calendar import HolidayBook, idle_dates, idle_label, load_holidays, next_business_day, years_covering
+from app.cauciones.calendar import (
+    HolidayBook,
+    idle_dates,
+    idle_label,
+    is_business_day,
+    load_holidays,
+    next_business_day,
+    years_covering,
+)
 from app.cauciones.market import (
     GOOD_FROM,
     HURDLE_8_TO_30,
@@ -89,6 +97,113 @@ def evaluar(
         "notas": notas,
         "feriados_disponibles": book.available,
     }
+
+
+def proyectar(
+    monto: Decimal,
+    tna: Decimal,
+    cada: int,
+    durante: int,
+    fecha_inicio: date,
+    book: HolidayBook | None = None,
+) -> dict:
+    """Deja el monto colocado y lo renueva cada `cada` días durante `durante` días.
+
+    Cada vuelta reinvierte capital e interés. Los días en que el vencimiento
+    cae en finde o feriado no suman interés y corren la renovación siguiente.
+    """
+    if durante < cada:
+        raise ValueError("El plazo tiene que alcanzar para aunque sea una renovación")
+    if book is None:
+        book = load_holidays(years_covering(fecha_inicio, durante + cada))
+
+    limite = fecha_inicio + timedelta(days=durante)
+    inicio = fecha_inicio
+    if not is_business_day(inicio, book.dates):
+        inicio = next_business_day(inicio, book.dates)
+
+    capital = _money(monto)
+    original = capital
+    interes_fijo = _money(original * tna / Decimal(100) * Decimal(cada) / Decimal(365))
+    filas: list[dict] = []
+    while inicio < limite and len(filas) < 2000:
+        data = evaluar(capital, tna, cada, inicio, book)
+        interes = Decimal(str(data["interes"]))
+        capital = _money(capital + interes)
+        filas.append(
+            {
+                "numero": len(filas) + 1,
+                "fecha_inicio": data["fecha_inicio"],
+                "fecha_vencimiento": data["fecha_vencimiento"],
+                "fecha_renovacion": data["fecha_renovacion"],
+                "dias_parados": data["dias_parados"],
+                "interes": data["interes"],
+                "monto_final": _num(capital, MONEY),
+            }
+        )
+        inicio = data["fecha_renovacion"]
+
+    if not filas:
+        raise ValueError("En ese plazo no entra ninguna renovación")
+
+    dias_parados = sum(fila["dias_parados"] for fila in filas)
+    fecha_fin = filas[-1]["fecha_renovacion"]
+    interes_total = _money(capital - original)
+    interes_simple = _money(interes_fijo * len(filas))
+    return {
+        "monto_inicial": _num(original, MONEY),
+        "tna": _num(tna, RATE),
+        "cada": cada,
+        "durante": durante,
+        "fecha_inicio": fecha_inicio,
+        "fecha_fin": fecha_fin,
+        "vueltas": len(filas),
+        "dias_rendidos": len(filas) * cada,
+        "dias_parados": dias_parados,
+        "interes": _num(interes_total, MONEY),
+        "interes_sin_reinvertir": _num(interes_simple, MONEY),
+        "monto_final": _num(capital, MONEY),
+        "detalle": filas,
+        "feriados_disponibles": book.available,
+        "notas": _notas_proyeccion(
+            durante=durante,
+            limite=limite,
+            fecha_fin=fecha_fin,
+            dias_parados=dias_parados,
+            feriados_ok=book.available,
+            arranco=filas[0]["fecha_inicio"],
+            pedido=fecha_inicio,
+        ),
+    }
+
+
+def _notas_proyeccion(
+    *,
+    durante: int,
+    limite: date,
+    fecha_fin: date,
+    dias_parados: int,
+    feriados_ok: bool,
+    arranco: date,
+    pedido: date,
+) -> list[str]:
+    notas = [
+        "Cada vuelta vuelve a colocar el capital y el interés, a la misma tasa. "
+        "El interés se calcula sobre los días pactados, año de 365."
+    ]
+    if arranco != pedido:
+        notas.append(f"El {pedido.strftime('%d/%m/%Y')} no es hábil, así que la primera arranca el {arranco.strftime('%d/%m/%Y')}.")
+    if dias_parados:
+        unidad = "día" if dias_parados == 1 else "días"
+        notas.append(f"{dias_parados} {unidad} sin renta: el vencimiento cayó en finde o feriado y ahí no se puede renovar.")
+    if fecha_fin > limite:
+        notas.append(
+            f"Pediste {durante} días. La última queda libre el {fecha_fin.strftime('%d/%m/%Y')}, "
+            "después de esa fecha, porque esos días parados corren la renovación."
+        )
+    if not feriados_ok:
+        notas.append("No pude traer todos los feriados. En los años que faltan, los días parados cuentan solo sábados y domingos.")
+    return notas
 
 
 def referencia() -> dict:

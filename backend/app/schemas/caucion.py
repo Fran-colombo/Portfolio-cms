@@ -141,6 +141,42 @@ class ListaCauciones(BaseModel):
     smtp_configurado: bool
 
 
+class ProyeccionIn(BaseModel):
+    monto: Decimal = Field(gt=0, le=Decimal("1000000000000"))
+    tna: Decimal = Field(gt=0, le=Decimal("1000"))
+    cada: int = Field(ge=1, le=370)
+    durante: int = Field(ge=1, le=1100)
+    fecha_inicio: date
+
+
+class Vuelta(BaseModel):
+    numero: int
+    fecha_inicio: date
+    fecha_vencimiento: date
+    fecha_renovacion: date
+    dias_parados: int
+    interes: float
+    monto_final: float
+
+
+class Proyeccion(BaseModel):
+    monto_inicial: float
+    tna: float
+    cada: int
+    durante: int
+    fecha_inicio: date
+    fecha_fin: date
+    vueltas: int
+    dias_rendidos: int
+    dias_parados: int
+    interes: float
+    interes_sin_reinvertir: float
+    monto_final: float
+    detalle: list[Vuelta]
+    feriados_disponibles: bool
+    notas: list[str]
+
+
 class Comparacion(BaseModel):
     items: list[ResultadoCaucion]
     mas_eficiente: list[ResultadoCaucion]

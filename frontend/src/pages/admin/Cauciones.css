@@ -62,6 +62,16 @@
   gap: 0.75rem;
 }
 
+.caucion-fields-roll {
+  grid-template-columns: 1.3fr 1fr 0.8fr 0.9fr 1fr;
+}
+
+.caucion-roll-table {
+  max-height: 320px;
+  overflow: auto;
+  margin-top: 0.9rem;
+}
+
 .caucion-ref.cols-3 {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
@@ -335,6 +345,7 @@
 @media (max-width: 900px) {
   .caucion-ref,
   .caucion-fields,
+  .caucion-fields-roll,
   .caucion-metrics,
   .caucion-ranks,
   .caucion-ref.cols-3 {
@@ -349,6 +360,7 @@
 @media (max-width: 640px) {
   .caucion-ref,
   .caucion-fields,
+  .caucion-fields-roll,
   .caucion-metrics,
   .caucion-ranks,
   .caucion-ref.cols-3,

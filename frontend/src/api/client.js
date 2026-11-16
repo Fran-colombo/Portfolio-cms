@@ -170,6 +170,11 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
+  proyectarCaucion: (payload) =>
+    request('/api/admin/cauciones/proyectar', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
   compararCauciones: (items) =>
     request('/api/admin/cauciones/comparar', {
       method: 'POST',
