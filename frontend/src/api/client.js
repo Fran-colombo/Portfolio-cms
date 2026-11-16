@@ -126,4 +126,29 @@ export const api = {
     request(`/api/projects/${id}/publish`, {
       method: 'PATCH',
     }),
+  getCauciones: () => request('/api/admin/cauciones'),
+  createCaucion: (payload) =>
+    request('/api/admin/cauciones', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateCaucion: (id, payload) =>
+    request(`/api/admin/cauciones/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+  deleteCaucion: (id) =>
+    request(`/api/admin/cauciones/${id}`, {
+      method: 'DELETE',
+    }),
+  calcularCaucion: (payload) =>
+    request('/api/admin/cauciones/calcular', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  compararCauciones: (items) =>
+    request('/api/admin/cauciones/comparar', {
+      method: 'POST',
+      body: JSON.stringify({ items }),
+    }),
 };

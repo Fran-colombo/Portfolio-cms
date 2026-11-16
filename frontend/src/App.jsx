@@ -7,6 +7,7 @@ import Login from './pages/admin/Login';
 import Dashboard from './pages/admin/Dashboard';
 import ProjectForm from './pages/admin/ProjectForm';
 import Users from './pages/admin/Users';
+import Cauciones from './pages/admin/Cauciones';
 
 export default function App() {
   return (
@@ -37,6 +38,7 @@ export default function App() {
         <Route path="projects/new" element={<ProjectForm />} />
         <Route path="projects/:id/edit" element={<ProjectForm />} />
         <Route path="users" element={<Users />} />
+        <Route path="cauciones" element={<Cauciones />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

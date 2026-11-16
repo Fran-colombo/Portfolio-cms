@@ -3,15 +3,18 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.cauciones.alerts import start_scheduler, stop_scheduler
 from app.config import settings
-from app.routers import auth, projects, users
+from app.routers import auth, cauciones, projects, users
 from app.seed import seed
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     seed()
+    start_scheduler()
     yield
+    stop_scheduler()
 
 
 app = FastAPI(title="Directorio Conkreto API", lifespan=lifespan)
@@ -28,6 +31,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(projects.router)
 app.include_router(users.router)
+app.include_router(cauciones.router)
 
 
 @app.get("/api/health")

@@ -8,6 +8,7 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const onUsers = location.pathname.startsWith('/admin/users');
+  const onCauciones = location.pathname.startsWith('/admin/cauciones');
 
   const handleLogout = () => {
     logout();
@@ -26,8 +27,11 @@ export default function AdminLayout() {
             {user && <span className="admin-user">{user.email}</span>}
           </div>
           <nav className="admin-nav">
-            <Link to="/admin" className={`admin-nav-link${!onUsers ? ' active' : ''}`}>
+            <Link to="/admin" className={`admin-nav-link${!onUsers && !onCauciones ? ' active' : ''}`}>
               Accesos
+            </Link>
+            <Link to="/admin/cauciones" className={`admin-nav-link${onCauciones ? ' active' : ''}`}>
+              Cauciones
             </Link>
             <Link to="/admin/users" className={`admin-nav-link${onUsers ? ' active' : ''}`}>
               Usuarios

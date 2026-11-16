@@ -33,6 +33,11 @@ def migrate() -> None:
         if "totp_secret" not in columns:
             _add_column("users", "totp_secret", "VARCHAR(64)")
 
+    if inspector.has_table("cauciones"):
+        columns = {col["name"] for col in inspector.get_columns("cauciones")}
+        if "persona" not in columns:
+            _add_column("cauciones", "persona", "VARCHAR(80) NOT NULL DEFAULT ''")
+
 
 if __name__ == "__main__":
     migrate()
