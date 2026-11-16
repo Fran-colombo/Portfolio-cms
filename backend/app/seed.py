@@ -3,6 +3,7 @@ from app.config import settings
 from app.database import Base, SessionLocal, engine
 from app.migrate import migrate
 from app.models.caucion import Caucion  # noqa: F401  (registra la tabla)
+from app.models.persona import OtraInversion, Persona  # noqa: F401  (registra las tablas)
 from app.models.user import User
 
 

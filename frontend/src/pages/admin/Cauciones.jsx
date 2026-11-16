@@ -38,8 +38,7 @@ const todayInput = () => {
   return local.toISOString().slice(0, 10);
 };
 
-const emptyForm = () => ({
-  persona: '',
+const emptyCaucion = () => ({
   monto: '',
   tna: '',
   dias: '',
@@ -85,12 +84,12 @@ function toPayload(form) {
   return { monto, tna, dias, fecha_inicio: form.fecha_inicio };
 }
 
-function toSaved(form) {
-  const persona = form.persona.trim().replace(/\s+/g, ' ');
-  if (!persona) {
-    throw new Error('Falta la persona');
+function toMoney(value, { allowZero = false } = {}) {
+  const monto = Number(value);
+  if (!Number.isFinite(monto) || monto < 0 || (!allowZero && monto === 0)) {
+    throw new Error(allowZero ? 'El monto no puede ser negativo' : 'El monto tiene que ser mayor a cero');
   }
-  return { ...toPayload(form), persona };
+  return monto;
 }
 
 function Verdict({ name }) {
@@ -152,22 +151,10 @@ function Resultado({ data }) {
   );
 }
 
-function Fields({ idPrefix, value, onChange, montoLabel = 'Monto', persona = false }) {
+function Fields({ idPrefix, value, onChange, montoLabel = 'Monto' }) {
   const set = (field) => (event) => onChange({ ...value, [field]: event.target.value });
   return (
     <>
-      {persona && (
-        <div className="form-group">
-          <label htmlFor={`${idPrefix}-persona`}>Persona</label>
-          <input
-            id={`${idPrefix}-persona`}
-            value={value.persona}
-            onChange={set('persona')}
-            maxLength={80}
-            required
-          />
-        </div>
-      )}
       <div className="form-group">
         <label htmlFor={`${idPrefix}-monto`}>{montoLabel}</label>
         <input id={`${idPrefix}-monto`} type="number" min="0" step="0.01" value={value.monto} onChange={set('monto')} required />
@@ -188,16 +175,47 @@ function Fields({ idPrefix, value, onChange, montoLabel = 'Monto', persona = fal
   );
 }
 
+function Modal({ title, onClose, children }) {
+  useEffect(() => {
+    const onKey = (event) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = previous;
+    };
+  }, [onClose]);
+
+  return (
+    <div className="caucion-modal-backdrop" onMouseDown={onClose}>
+      <div
+        className="caucion-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="caucion-modal-title"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <h2 id="caucion-modal-title">{title}</h2>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 export default function Cauciones() {
   const [book, setBook] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [formError, setFormError] = useState(null);
-  const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState(emptyForm);
-  const [editingId, setEditingId] = useState(null);
+  const [selectedId, setSelectedId] = useState(null);
+  const [dialog, setDialog] = useState(null);
+  const [email, setEmail] = useState('');
+  const [mailError, setMailError] = useState(null);
+  const [savingMail, setSavingMail] = useState(false);
 
-  const [calcForm, setCalcForm] = useState(emptyForm);
+  const [calcForm, setCalcForm] = useState(emptyCaucion);
   const [calcResult, setCalcResult] = useState(null);
   const [calcError, setCalcError] = useState(null);
   const [calculating, setCalculating] = useState(false);
@@ -207,72 +225,224 @@ export default function Cauciones() {
   const [compareError, setCompareError] = useState(null);
   const [comparing, setComparing] = useState(false);
 
-  const load = () => {
-    setLoading(true);
+  const load = (silent = false) => {
+    if (!silent) setLoading(true);
     setError(null);
-    api
+    return api
       .getCauciones()
-      .then(setBook)
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
+      .then((data) => {
+        setBook(data);
+        return data;
+      })
+      .catch((err) => {
+        setError(err.message);
+        throw err;
+      })
+      .finally(() => {
+        if (!silent) setLoading(false);
+      });
   };
 
   useEffect(() => {
-    load();
+    load().catch(() => {});
   }, []);
 
   useEffect(() => {
     localStorage.setItem(DRAFT_KEY, JSON.stringify(rows));
   }, [rows]);
 
-  const handleSave = async (event) => {
+  const perfiles = book?.perfiles || [];
+  const selected = perfiles.find((item) => item.id === selectedId) || perfiles[0] || null;
+
+  useEffect(() => {
+    setEmail(selected?.email || '');
+    setMailError(null);
+  }, [selected?.id, selected?.email]);
+
+  const closeDialog = () => setDialog(null);
+
+  const openPersona = () => {
+    setDialog({ type: 'persona', nombre: '', email: '', error: null, busy: false });
+  };
+
+  const openCaucion = (item) => {
+    setDialog({
+      type: 'caucion',
+      id: item?.id || null,
+      personaId: item?.persona_id || selected?.id,
+      form: item
+        ? {
+            monto: String(item.monto),
+            tna: String(item.tna),
+            dias: String(item.dias),
+            fecha_inicio: item.fecha_inicio.slice(0, 10),
+          }
+        : emptyCaucion(),
+      error: null,
+      busy: false,
+    });
+  };
+
+  const openOtra = (otra) => {
+    setDialog({
+      type: 'otra',
+      id: otra?.id || null,
+      nombre: otra?.nombre || '',
+      monto: otra ? String(otra.monto) : '',
+      error: null,
+      busy: false,
+    });
+  };
+
+  const askConfirm = ({ title, message, confirmLabel, run }) => {
+    setDialog({ type: 'confirm', title, message, confirmLabel, run, error: null, busy: false });
+  };
+
+  const savePersona = async (event) => {
     event.preventDefault();
-    setFormError(null);
-    setSaving(true);
+    const nombre = dialog.nombre.trim().replace(/\s+/g, ' ');
+    const mail = dialog.email.trim();
+    if (!nombre) {
+      setDialog((current) => ({ ...current, error: 'Falta el nombre' }));
+      return;
+    }
+    if (!mail.includes('@')) {
+      setDialog((current) => ({ ...current, error: 'Falta el mail de la persona' }));
+      return;
+    }
+    setDialog((current) => ({ ...current, busy: true, error: null }));
     try {
-      const payload = toSaved(form);
-      if (editingId) {
-        await api.updateCaucion(editingId, payload);
+      const created = await api.createPersona({ nombre, email: mail });
+      await load(true);
+      setSelectedId(created.id);
+      setDialog({
+        type: 'alert',
+        title: 'Perfil creado',
+        message: `${created.nombre} quedó creado. El patrimonio se arma con sus cauciones y con Otras. Los avisos salen a ${created.email}.`,
+      });
+    } catch (err) {
+      setDialog((current) => ({ ...current, busy: false, error: err.message }));
+    }
+  };
+
+  const saveMail = async (event) => {
+    event.preventDefault();
+    if (!selected) return;
+    const mail = email.trim();
+    if (!mail.includes('@')) {
+      setMailError('Falta el mail de la persona');
+      return;
+    }
+    setMailError(null);
+    setSavingMail(true);
+    try {
+      await api.updatePersona(selected.id, { nombre: selected.nombre, email: mail });
+      await load(true);
+      setDialog({
+        type: 'alert',
+        title: 'Mail guardado',
+        message: `Los avisos de ${selected.nombre} salen a ${mail}, desde mailconkreto@gmail.com.`,
+      });
+    } catch (err) {
+      setMailError(err.message);
+    } finally {
+      setSavingMail(false);
+    }
+  };
+
+  const saveCaucion = async (event) => {
+    event.preventDefault();
+    setDialog((current) => ({ ...current, busy: true, error: null }));
+    try {
+      const payload = { ...toPayload(dialog.form), persona_id: dialog.personaId };
+      const editing = Boolean(dialog.id);
+      if (editing) {
+        await api.updateCaucion(dialog.id, payload);
       } else {
         await api.createCaucion(payload);
       }
-      setForm(emptyForm());
-      setEditingId(null);
-      load();
+      await load(true);
+      const nombre = selected?.nombre || 'la persona';
+      setDialog({
+        type: 'alert',
+        title: editing ? 'Cambios guardados' : 'Caución cargada',
+        message: editing
+          ? `La caución de ${nombre} quedó actualizada.`
+          : `Quedó guardada en ${nombre}. El aviso sale a su mail el día en que ya puede volver a colocar.`,
+      });
     } catch (err) {
-      setFormError(err.message);
-    } finally {
-      setSaving(false);
+      setDialog((current) => (current?.type === 'caucion' ? { ...current, busy: false, error: err.message } : current));
     }
   };
 
-  const startEdit = (item) => {
-    setEditingId(item.id);
-    setForm({
-      persona: item.persona === 'Sin persona' ? '' : item.persona,
-      monto: String(item.monto),
-      tna: String(item.tna),
-      dias: String(item.dias),
-      fecha_inicio: item.fecha_inicio,
-    });
-    setFormError(null);
-  };
-
-  const handleDelete = async (item) => {
-    if (!window.confirm(`¿Borrar la caución de ${item.persona}, ${ars(item.monto)} al ${pct(item.tna)}?`)) {
+  const saveOtra = async (event) => {
+    event.preventDefault();
+    const nombre = dialog.nombre.trim().replace(/\s+/g, ' ');
+    if (!nombre) {
+      setDialog((current) => ({ ...current, error: 'Falta el nombre' }));
       return;
     }
-    setFormError(null);
+    setDialog((current) => ({ ...current, busy: true, error: null }));
     try {
-      await api.deleteCaucion(item.id);
-      if (editingId === item.id) {
-        setEditingId(null);
-        setForm(emptyForm());
+      const payload = { nombre, monto: toMoney(dialog.monto, { allowZero: true }) };
+      const editing = Boolean(dialog.id);
+      if (editing) {
+        await api.updateOtra(dialog.id, payload);
+      } else {
+        await api.createOtra(selected.id, payload);
       }
-      load();
+      await load(true);
+      setDialog({
+        type: 'alert',
+        title: editing ? 'Otra actualizada' : 'Otra cargada',
+        message: editing
+          ? `${nombre} quedó en ${ars(payload.monto)}.`
+          : `${nombre} se sumó al patrimonio de ${selected.nombre}.`,
+      });
     } catch (err) {
-      setFormError(err.message);
+      setDialog((current) => (current?.type === 'otra' ? { ...current, busy: false, error: err.message } : current));
     }
+  };
+
+  const runConfirm = async () => {
+    setDialog((current) => ({ ...current, busy: true, error: null }));
+    try {
+      const done = await dialog.run();
+      await load(true);
+      setDialog({ type: 'alert', title: done.title, message: done.message });
+    } catch (err) {
+      setDialog((current) => (current?.type === 'confirm' ? { ...current, busy: false, error: err.message } : current));
+    }
+  };
+
+  const askDeleteCaucion = (item) => {
+    askConfirm({
+      title: 'Borrar caución',
+      message: `¿Borrar la caución de ${item.persona}, ${ars(item.monto)} al ${pct(item.tna)}?`,
+      confirmLabel: 'Borrar',
+      run: async () => {
+        await api.deleteCaucion(item.id);
+        return {
+          title: 'Caución borrada',
+          message: `Se borró del historial de ${item.persona}.`,
+        };
+      },
+    });
+  };
+
+  const askDeleteOtra = (otra) => {
+    askConfirm({
+      title: 'Borrar otra',
+      message: `¿Borrar ${otra.nombre} (${ars(otra.monto)}) del patrimonio de ${selected.nombre}?`,
+      confirmLabel: 'Borrar',
+      run: async () => {
+        await api.deleteOtra(otra.id);
+        return {
+          title: 'Otra borrada',
+          message: `${otra.nombre} ya no suma en el patrimonio de ${selected.nombre}.`,
+        };
+      },
+    });
   };
 
   const handleCalc = async (event) => {
@@ -308,7 +478,7 @@ export default function Cauciones() {
   };
 
   const referencia = book?.referencia;
-  const avisos = (book?.items || []).filter((item) => item.estado === 'renovar' || item.estado === 'parada');
+  const avisos = (selected?.cauciones || []).filter((item) => item.estado === 'renovar' || item.estado === 'parada');
 
   return (
     <div>
@@ -339,11 +509,18 @@ export default function Cauciones() {
           </div>
         </div>
       )}
-      {referencia && <p className="form-hint">{referencia.fuente}. La recomendación usa la TNA efectiva, no la pactada.</p>}
+      {referencia && (
+        <p className="form-hint">
+          {referencia.fuente}. Superar el {pct(referencia.tna_cauciones)} no alcanza para que convenga. La
+          recomendación mira la TNA efectiva: de 8 a 30 días pide al menos 22,80%. Una caución al 21,90% por 10 días
+          queda en Poco premio: le gana al promedio y al plazo fijo, y no llega a ese premio. Plazo fijo e inflación
+          son contexto, no el sí o el no.
+        </p>
+      )}
 
       {book && !book.smtp_configurado && (
         <p className="caucion-banner">
-          El aviso por mail no está configurado. Las cauciones se guardan igual. Completá el SMTP en el entorno y reiniciá el backend.
+          Los avisos salen desde mailconkreto@gmail.com. Falta la contraseña de aplicación en SMTP_PASSWORD. Las cauciones se guardan igual.
         </p>
       )}
       {book && !book.feriados_disponibles && (
@@ -351,6 +528,24 @@ export default function Cauciones() {
           No pude traer todos los feriados. En los años que faltan, solo se descuentan sábados y domingos.
         </p>
       )}
+
+      <div className="caucion-tabs" role="tablist">
+        {perfiles.map((persona) => (
+          <button
+            key={persona.id}
+            type="button"
+            role="tab"
+            aria-selected={selected?.id === persona.id}
+            className={`caucion-tab${selected?.id === persona.id ? ' is-active' : ''}`}
+            onClick={() => setSelectedId(persona.id)}
+          >
+            {persona.nombre}
+          </button>
+        ))}
+        <button type="button" className="btn btn-outline btn-sm" onClick={openPersona}>
+          Nueva persona
+        </button>
+      </div>
 
       {avisos.map((item) => (
         <p className="caucion-banner" key={item.id}>
@@ -365,77 +560,160 @@ export default function Cauciones() {
       ))}
 
       <section className="caucion-section">
-        <h2>{editingId ? 'Editar caución' : 'Cargar caución'}</h2>
-        <p className="caucion-lead">
-          Estas son las que avisan. El vencimiento es la fecha de inicio más los días corridos. El interés y el mail se arman por persona.
-        </p>
-        <form className="admin-form" onSubmit={handleSave}>
-          <div className="caucion-fields with-persona">
-            <Fields idPrefix="book" value={form} onChange={setForm} persona />
-          </div>
-          {formError && <p className="form-error">{formError}</p>}
-          <div className="form-actions">
-            <button type="submit" className="btn btn-primary" disabled={saving}>
-              {saving ? 'Guardando...' : editingId ? 'Guardar cambios' : 'Guardar caución'}
-            </button>
-            {editingId && (
-              <button
-                type="button"
-                className="btn btn-outline"
-                onClick={() => {
-                  setEditingId(null);
-                  setForm(emptyForm());
-                }}
-              >
-                Cancelar
-              </button>
-            )}
-          </div>
-        </form>
-      </section>
-
-      <section className="caucion-section">
-        <h2>Historial</h2>
         {loading && <div className="loading">Cargando...</div>}
         {error && <div className="error-state">{error}</div>}
-        {book && (
+        {book && !selected && <p className="empty-state">Creá un perfil para ver el patrimonio y cargar cauciones.</p>}
+        {selected && (
           <>
-            <h3>Total</h3>
-            <div className="caucion-ref">
+            <h2>{selected.nombre}</h2>
+            <form className="caucion-mail" onSubmit={saveMail}>
+              <div className="form-group">
+                <label htmlFor="perfil-mail">Mail que recibe el aviso</label>
+                <input
+                  id="perfil-mail"
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  autoComplete="email"
+                  placeholder="nombre@correo.com"
+                  required
+                />
+              </div>
+              <button type="submit" className="btn btn-primary btn-sm" disabled={savingMail}>
+                {savingMail ? 'Guardando...' : 'Guardar mail'}
+              </button>
+            </form>
+            {mailError && <p className="form-error">{mailError}</p>}
+            <p className="form-hint">
+              Los avisos de {selected.nombre} salen a este mail, desde mailconkreto@gmail.com.
+            </p>
+
+            <div className="caucion-ref cols-3">
               <div className="caucion-stat">
-                <span>Interés cobrado</span>
-                <strong>{ars(book.acumulado.interes_cobrado)}</strong>
+                <span>En cauciones</span>
+                <strong>{ars(selected.patrimonio.en_cauciones)}</strong>
               </div>
               <div className="caucion-stat">
-                <span>Interés de las vigentes</span>
-                <strong>{ars(book.acumulado.interes_vigente)}</strong>
+                <span>En otras</span>
+                <strong>{ars(selected.patrimonio.en_otras)}</strong>
               </div>
               <div className="caucion-stat">
-                <span>TNA ponderada</span>
-                <strong>{pct(book.acumulado.tna_ponderada)}</strong>
-              </div>
-              <div className="caucion-stat">
-                <span>Rendimiento del capital</span>
-                <strong>{pct(book.acumulado.rendimiento_capital, 4)}</strong>
+                <span>Patrimonio</span>
+                <strong>{ars(selected.patrimonio.total)}</strong>
               </div>
             </div>
             <p className="form-hint">
-              El total de arriba junta a todas las personas. Abajo, cada una tiene su interés, su TNA ponderada y su rendimiento.
+              El patrimonio suma el capital que sigue colocado más Otras. Las cauciones ya vencidas quedan en el historial y no se cuentan otra vez.
             </p>
-            {book.items.length === 0 ? (
-              <p className="empty-state">Todavía no hay cauciones cargadas.</p>
+
+            <div className="caucion-ref">
+              <div className="caucion-stat">
+                <span>Interés cobrado</span>
+                <strong>{ars(selected.acumulado.interes_cobrado)}</strong>
+              </div>
+              <div className="caucion-stat">
+                <span>Interés vigente</span>
+                <strong>{ars(selected.acumulado.interes_vigente)}</strong>
+              </div>
+              <div className="caucion-stat">
+                <span>TNA ponderada</span>
+                <strong>{pct(selected.acumulado.tna_ponderada)}</strong>
+              </div>
+              <div className="caucion-stat">
+                <span>Rendimiento</span>
+                <strong>{pct(selected.acumulado.rendimiento_capital, 4)}</strong>
+              </div>
+            </div>
+
+            <div className="caucion-toolbar">
+              <h3>Cauciones</h3>
+              <button type="button" className="btn btn-primary btn-sm" onClick={() => openCaucion(null)}>
+                Cargar caución
+              </button>
+            </div>
+            {selected.cauciones.length === 0 ? (
+              <p className="empty-state">Todavía no hay cauciones de {selected.nombre}.</p>
             ) : (
-              book.por_persona.map((persona) => (
-                <PersonaBlock
-                  key={persona.persona}
-                  persona={persona}
-                  items={book.items.filter(
-                    (item) => item.persona.trim().toLocaleLowerCase() === persona.persona.trim().toLocaleLowerCase(),
-                  )}
-                  onEdit={startEdit}
-                  onDelete={handleDelete}
-                />
-              ))
+              <div className="admin-table-wrap">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Inicio</th>
+                      <th>Vence</th>
+                      <th>Renovás</th>
+                      <th>Monto</th>
+                      <th>Días</th>
+                      <th>TNA</th>
+                      <th>Efectiva</th>
+                      <th>Interés</th>
+                      <th>%</th>
+                      <th>Veredicto</th>
+                      <th>Estado</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selected.cauciones.map((item) => (
+                      <tr key={item.id}>
+                        <td>{fecha(item.fecha_inicio)}</td>
+                        <td>{fecha(item.fecha_vencimiento)}</td>
+                        <td>{fecha(item.fecha_renovacion)}</td>
+                        <td>{ars(item.monto)}</td>
+                        <td>{item.dias}</td>
+                        <td>{pct(item.tna)}</td>
+                        <td>{pct(item.tna_efectiva)}</td>
+                        <td>{ars(item.interes)}</td>
+                        <td>{pct(item.rendimiento_periodo, 4)}</td>
+                        <td>
+                          <Verdict name={item.veredicto} />
+                        </td>
+                        <td>{ESTADO[item.estado] || item.estado}</td>
+                        <td>
+                          <div className="admin-actions">
+                            <button type="button" className="btn btn-outline btn-sm" onClick={() => openCaucion(item)}>
+                              Editar
+                            </button>
+                            <button type="button" className="btn btn-danger btn-sm" onClick={() => askDeleteCaucion(item)}>
+                              Borrar
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <div className="caucion-toolbar">
+              <h3>Otras</h3>
+              <button type="button" className="btn btn-outline btn-sm" onClick={() => openOtra(null)}>
+                Agregar
+              </button>
+            </div>
+            <p className="form-hint">Saldos que no son caución. Actualizalos cuando quieras: se pisa el monto y queda la fecha.</p>
+            {selected.otras.length === 0 ? (
+              <p className="empty-state">Nada cargado en Otras.</p>
+            ) : (
+              <ul className="caucion-otras">
+                {selected.otras.map((otra) => (
+                  <li key={otra.id}>
+                    <div>
+                      <strong>{otra.nombre}</strong>
+                      <span>{ars(otra.monto)}</span>
+                      {otra.updated_at && <small>Actualizado el {fecha(otra.updated_at)}</small>}
+                    </div>
+                    <div className="admin-actions">
+                      <button type="button" className="btn btn-outline btn-sm" onClick={() => openOtra(otra)}>
+                        Actualizar
+                      </button>
+                      <button type="button" className="btn btn-danger btn-sm" onClick={() => askDeleteOtra(otra)}>
+                        Borrar
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             )}
           </>
         )}
@@ -446,7 +724,7 @@ export default function Cauciones() {
         <p className="caucion-lead">No se guarda y no manda mail. Sirve para ver si el plazo y la tasa cierran.</p>
         <form className="admin-form" onSubmit={handleCalc}>
           <div className="caucion-fields">
-            <Fields idPrefix="calc" value={calcForm} onChange={setCalcForm} montoLabel="Patrimonio" />
+            <Fields idPrefix="calc" value={calcForm} onChange={setCalcForm} />
           </div>
           {calcError && <p className="form-error">{calcError}</p>}
           <div className="form-actions">
@@ -502,81 +780,133 @@ export default function Cauciones() {
           </div>
         )}
       </section>
-    </div>
-  );
-}
 
-function PersonaBlock({ persona, items, onEdit, onDelete }) {
-  return (
-    <div className="caucion-person">
-      <h3>{persona.persona}</h3>
-      <div className="caucion-ref">
-        <div className="caucion-stat">
-          <span>Interés cobrado</span>
-          <strong>{ars(persona.interes_cobrado)}</strong>
-        </div>
-        <div className="caucion-stat">
-          <span>Interés vigente</span>
-          <strong>{ars(persona.interes_vigente)}</strong>
-        </div>
-        <div className="caucion-stat">
-          <span>TNA ponderada</span>
-          <strong>{pct(persona.tna_ponderada)}</strong>
-        </div>
-        <div className="caucion-stat">
-          <span>Rendimiento</span>
-          <strong>{pct(persona.rendimiento_capital, 4)}</strong>
-        </div>
-      </div>
-      <div className="admin-table-wrap">
-        <table className="admin-table">
-          <thead>
-            <tr>
-              <th>Inicio</th>
-              <th>Vence</th>
-              <th>Renovás</th>
-              <th>Monto</th>
-              <th>Días</th>
-              <th>TNA</th>
-              <th>Efectiva</th>
-              <th>Interés</th>
-              <th>%</th>
-              <th>Veredicto</th>
-              <th>Estado</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((item) => (
-              <tr key={item.id}>
-                <td>{fecha(item.fecha_inicio)}</td>
-                <td>{fecha(item.fecha_vencimiento)}</td>
-                <td>{fecha(item.fecha_renovacion)}</td>
-                <td>{ars(item.monto)}</td>
-                <td>{item.dias}</td>
-                <td>{pct(item.tna)}</td>
-                <td>{pct(item.tna_efectiva)}</td>
-                <td>{ars(item.interes)}</td>
-                <td>{pct(item.rendimiento_periodo, 4)}</td>
-                <td>
-                  <Verdict name={item.veredicto} />
-                </td>
-                <td>{ESTADO[item.estado] || item.estado}</td>
-                <td>
-                  <div className="admin-actions">
-                    <button type="button" className="btn btn-outline btn-sm" onClick={() => onEdit(item)}>
-                      Editar
-                    </button>
-                    <button type="button" className="btn btn-danger btn-sm" onClick={() => onDelete(item)}>
-                      Borrar
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {dialog?.type === 'persona' && (
+        <Modal title="Nueva persona" onClose={closeDialog}>
+          <form className="admin-form" onSubmit={savePersona}>
+            <div className="form-group">
+              <label htmlFor="nueva-nombre">Nombre</label>
+              <input
+                id="nueva-nombre"
+                value={dialog.nombre}
+                onChange={(event) => setDialog((current) => ({ ...current, nombre: event.target.value }))}
+                maxLength={80}
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label htmlFor="nueva-mail">Mail que recibe el aviso</label>
+              <input
+                id="nueva-mail"
+                type="email"
+                value={dialog.email}
+                onChange={(event) => setDialog((current) => ({ ...current, email: event.target.value }))}
+                autoComplete="email"
+                placeholder="nombre@correo.com"
+                required
+              />
+            </div>
+            <p className="form-hint">Desde mailconkreto@gmail.com, a las 9:00 del día en que puede volver a colocar.</p>
+            {dialog.error && <p className="form-error">{dialog.error}</p>}
+            <div className="form-actions">
+              <button type="submit" className="btn btn-primary" disabled={dialog.busy}>
+                {dialog.busy ? 'Guardando...' : 'Crear perfil'}
+              </button>
+              <button type="button" className="btn btn-outline" onClick={closeDialog} disabled={dialog.busy}>
+                Cancelar
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {dialog?.type === 'caucion' && (
+        <Modal title={dialog.id ? 'Editar caución' : 'Cargar caución'} onClose={closeDialog}>
+          <p className="caucion-lead">
+            El vencimiento es la fecha de inicio más los días corridos. Queda en {selected?.nombre}.
+          </p>
+          <form className="admin-form" onSubmit={saveCaucion}>
+            <div className="caucion-fields">
+              <Fields idPrefix="modal-caucion" value={dialog.form} onChange={(form) => setDialog((current) => ({ ...current, form }))} />
+            </div>
+            {dialog.error && <p className="form-error">{dialog.error}</p>}
+            <div className="form-actions">
+              <button type="submit" className="btn btn-primary" disabled={dialog.busy}>
+                {dialog.busy ? 'Guardando...' : dialog.id ? 'Guardar cambios' : 'Guardar caución'}
+              </button>
+              <button type="button" className="btn btn-outline" onClick={closeDialog} disabled={dialog.busy}>
+                Cancelar
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {dialog?.type === 'otra' && (
+        <Modal title={dialog.id ? 'Actualizar otra' : 'Agregar otra'} onClose={closeDialog}>
+          <form className="admin-form" onSubmit={saveOtra}>
+            <div className="form-group">
+              <label htmlFor="otra-nombre">Nombre</label>
+              <input
+                id="otra-nombre"
+                value={dialog.nombre}
+                onChange={(event) => setDialog((current) => ({ ...current, nombre: event.target.value }))}
+                maxLength={80}
+                placeholder="Dólares, FCI..."
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label htmlFor="otra-monto">Monto actual</label>
+              <input
+                id="otra-monto"
+                type="number"
+                min="0"
+                step="0.01"
+                value={dialog.monto}
+                onChange={(event) => setDialog((current) => ({ ...current, monto: event.target.value }))}
+                required
+              />
+            </div>
+            <p className="form-hint">Se guarda este saldo y la fecha de hoy. No arma un historial diario.</p>
+            {dialog.error && <p className="form-error">{dialog.error}</p>}
+            <div className="form-actions">
+              <button type="submit" className="btn btn-primary" disabled={dialog.busy}>
+                {dialog.busy ? 'Guardando...' : dialog.id ? 'Guardar monto' : 'Agregar'}
+              </button>
+              <button type="button" className="btn btn-outline" onClick={closeDialog} disabled={dialog.busy}>
+                Cancelar
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {dialog?.type === 'alert' && (
+        <Modal title={dialog.title} onClose={closeDialog}>
+          <p>{dialog.message}</p>
+          <div className="form-actions">
+            <button type="button" className="btn btn-primary" onClick={closeDialog}>
+              Aceptar
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {dialog?.type === 'confirm' && (
+        <Modal title={dialog.title} onClose={dialog.busy ? () => {} : closeDialog}>
+          <p>{dialog.message}</p>
+          {dialog.error && <p className="form-error">{dialog.error}</p>}
+          <div className="form-actions">
+            <button type="button" className="btn btn-danger" onClick={runConfirm} disabled={dialog.busy}>
+              {dialog.busy ? 'Borrando...' : dialog.confirmLabel}
+            </button>
+            <button type="button" className="btn btn-outline" onClick={closeDialog} disabled={dialog.busy}>
+              Cancelar
+            </button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

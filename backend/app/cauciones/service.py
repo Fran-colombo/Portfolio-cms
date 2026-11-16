@@ -15,12 +15,20 @@ def book_for(rows: list[Caucion], hoy: date) -> HolidayBook:
     return load_holidays(years)
 
 
+COLOCADAS = {"vigente", "parada", "renovar", "avisada"}
+
+
 def presentar(row: Caucion, hoy: date, book: HolidayBook) -> dict:
     data = evaluar(Decimal(row.monto), Decimal(row.tna), row.dias, row.fecha_inicio, book)
+    perfil = row.perfil
+    nombre = (perfil.nombre if perfil else (row.persona or "")).strip() or "Sin persona"
+    mail = ((perfil.email if perfil else row.email) or "").strip()
     data.update(
         {
             "id": row.id,
-            "persona": (row.persona or "").strip() or "Sin persona",
+            "persona_id": row.persona_id,
+            "persona": nombre,
+            "email": mail,
             "estado": estado(
                 data["fecha_vencimiento"],
                 data["fecha_renovacion"],
@@ -32,6 +40,16 @@ def presentar(row: Caucion, hoy: date, book: HolidayBook) -> dict:
         }
     )
     return data
+
+
+def patrimonio(items: list[dict], otras: list[dict]) -> dict:
+    en_cauciones = sum(float(item["monto"]) for item in items if item.get("estado") in COLOCADAS)
+    en_otras = sum(float(item["monto"]) for item in otras)
+    return {
+        "en_cauciones": round(en_cauciones, 2),
+        "en_otras": round(en_otras, 2),
+        "total": round(en_cauciones + en_otras, 2),
+    }
 
 
 def acumulado(items: list[dict], hoy: date) -> dict:
@@ -71,23 +89,38 @@ def acumulado(items: list[dict], hoy: date) -> dict:
     }
 
 
+def clave_persona(nombre: str) -> str:
+    return " ".join((nombre or "").split()).casefold()
+
+
 def agrupar_por_persona(items: list[dict]) -> list[tuple[str, list[dict]]]:
     groups: dict[str, list[dict]] = {}
     labels: dict[str, str] = {}
     for item in items:
         raw = (item.get("persona") or "").strip() or "Sin persona"
-        key = " ".join(raw.split()).casefold()
+        key = clave_persona(raw)
         groups.setdefault(key, []).append(item)
         labels.setdefault(key, raw)
     return [(labels[key], groups[key]) for key in sorted(labels, key=lambda item: labels[item].casefold())]
 
 
 def por_persona(items: list[dict], hoy: date) -> list[dict]:
-    return [
-        {"persona": nombre, **acumulado(chunk, hoy)}
-        for nombre, chunk in agrupar_por_persona(items)
-    ]
+    grouped = []
+    for nombre, chunk in agrupar_por_persona(items):
+        email = next((item.get("email") or "" for item in chunk if item.get("email")), "")
+        grouped.append({"persona": nombre, "email": email, **acumulado(chunk, hoy)})
+    return grouped
 
 
 def mercado() -> dict:
     return referencia()
+
+
+def presentar_otra(row) -> dict:
+    return {
+        "id": row.id,
+        "persona_id": row.persona_id,
+        "nombre": row.nombre,
+        "monto": float(row.monto),
+        "updated_at": row.updated_at,
+    }

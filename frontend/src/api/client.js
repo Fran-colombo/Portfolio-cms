@@ -137,6 +137,30 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify(payload),
     }),
+  createPersona: (payload) =>
+    request('/api/admin/cauciones/personas', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updatePersona: (id, payload) =>
+    request(`/api/admin/cauciones/personas/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+  createOtra: (personaId, payload) =>
+    request(`/api/admin/cauciones/personas/${personaId}/otras`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateOtra: (id, payload) =>
+    request(`/api/admin/cauciones/otras/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+  deleteOtra: (id) =>
+    request(`/api/admin/cauciones/otras/${id}`, {
+      method: 'DELETE',
+    }),
   deleteCaucion: (id) =>
     request(`/api/admin/cauciones/${id}`, {
       method: 'DELETE',

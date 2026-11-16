@@ -13,7 +13,7 @@ from apscheduler.triggers.cron import CronTrigger
 
 from app.cauciones.calendar import is_business_day
 from app.cauciones.clock import ART, ahora_art
-from app.cauciones.service import agrupar_por_persona, book_for, presentar
+from app.cauciones.service import book_for, clave_persona, presentar
 from app.config import settings
 from app.database import SessionLocal
 from app.models.caucion import Caucion
@@ -25,11 +25,11 @@ _lock = threading.Lock()
 
 
 def smtp_configurado() -> bool:
-    return bool(settings.smtp_host.strip() and settings.smtp_from.strip() and _destino())
+    return bool(settings.smtp_host.strip() and settings.smtp_password.strip() and _remitente())
 
 
-def _destino() -> str:
-    return (settings.caucion_alert_email or settings.admin_email or "").strip()
+def _remitente() -> str:
+    return (settings.smtp_from or settings.smtp_user).strip()
 
 
 def send_due_alerts(*, catch_up: bool = False) -> None:
@@ -64,15 +64,37 @@ def _send_due(*, catch_up: bool) -> None:
         if not due:
             return
         if not smtp_configurado():
-            logger.warning("Hay cauciones para avisar y el SMTP no está configurado")
+            logger.warning("Hay cauciones para avisar y falta SMTP_PASSWORD de mailconkreto@gmail.com")
             return
 
-        _deliver(due)
+        buckets: dict[str, dict] = {}
+        for row, item in due:
+            perfil = row.perfil
+            nombre = (perfil.nombre if perfil else item["persona"]).strip() or "Sin persona"
+            email = ((perfil.email if perfil else item.get("email")) or "").strip()
+            key = f"id:{perfil.id}" if perfil else clave_persona(nombre)
+            bucket = buckets.setdefault(key, {"persona": nombre, "email": email, "rows": []})
+            if email:
+                bucket["email"] = email
+            bucket["rows"].append((row, item))
+
         stamp = datetime.now(timezone.utc)
-        for row, _presented in due:
-            row.notified_at = stamp
+        enviados = 0
+        for bucket in buckets.values():
+            if not bucket["email"]:
+                logger.warning("Sin mail cargado para %s", bucket["persona"])
+                continue
+            try:
+                _deliver(bucket["persona"], bucket["email"], [item for _row, item in bucket["rows"]])
+            except Exception:
+                logger.exception("No se pudo avisar a %s", bucket["persona"])
+                continue
+            for row, _item in bucket["rows"]:
+                row.notified_at = stamp
+            enviados += 1
         db.commit()
-        logger.info("Aviso de cauciones enviado (%s)", len(due))
+        if enviados:
+            logger.info("Avisos de cauciones enviados (%s)", enviados)
     except Exception:
         db.rollback()
         logger.exception("No se pudo enviar el aviso de cauciones")
@@ -80,32 +102,27 @@ def _send_due(*, catch_up: bool) -> None:
         db.close()
 
 
-def _deliver(due: list[tuple[Caucion, dict]]) -> None:
+def _deliver(persona: str, email: str, items: list[dict]) -> None:
     message = EmailMessage()
-    cantidad = len(due)
-    message["Subject"] = (
-        "Caución para renovar hoy" if cantidad == 1 else f"{cantidad} cauciones para renovar hoy"
-    )
-    message["From"] = settings.smtp_from.strip()
-    message["To"] = _destino()
+    cantidad = len(items)
+    asunto = "caución para renovar hoy" if cantidad == 1 else f"{cantidad} cauciones para renovar hoy"
+    message["Subject"] = f"{persona}, {asunto}"
+    message["From"] = _remitente()
+    message["To"] = email
 
-    presented = [item for _row, item in due]
-    lines = ["Hoy ya podés volver a colocar estas cauciones.", ""]
-    for persona, items in agrupar_por_persona(presented):
-        lines.append(persona)
-        interes = 0.0
-        for item in items:
-            interes += float(item["interes"])
-            lines.append(
-                f"- {_pesos(item['monto'])} al {_pct(item['tna'])} por {item['dias']} días. "
-                f"Venció el {_fecha(item['fecha_vencimiento'])}. "
-                f"Interés cobrado: {_pesos(item['interes'])}. "
-                f"{item['resumen']}"
-            )
-            lines.append(f"  Si pasa un día más sin colocar, dejás de ganar {_pesos(item['costo_dia_extra'])}.")
-        lines.append(f"Interés de {persona} en estas cauciones: {_pesos(interes)}.")
-        lines.append("")
-    lines.append("El aviso está separado por persona.")
+    lines = [f"{persona}, hoy ya podés volver a colocar estas cauciones.", ""]
+    interes = 0.0
+    for item in items:
+        interes += float(item["interes"])
+        lines.append(
+            f"- {_pesos(item['monto'])} al {_pct(item['tna'])} por {item['dias']} días. "
+            f"Venció el {_fecha(item['fecha_vencimiento'])}. "
+            f"Interés cobrado: {_pesos(item['interes'])}. "
+            f"{item['resumen']}"
+        )
+        lines.append(f"  Si pasa un día más sin colocar, dejás de ganar {_pesos(item['costo_dia_extra'])}.")
+    lines.append("")
+    lines.append(f"Interés de {persona} en estas cauciones: {_pesos(interes)}.")
     message.set_content("\n".join(lines))
 
     host = settings.smtp_host.strip()

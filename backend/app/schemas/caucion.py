@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 class CaucionCalcIn(BaseModel):
@@ -12,15 +12,48 @@ class CaucionCalcIn(BaseModel):
 
 
 class CaucionIn(CaucionCalcIn):
-    persona: str = Field(min_length=1, max_length=80)
+    persona_id: int
 
-    @field_validator("persona")
+
+def _nombre_limpio(value: str) -> str:
+    cleaned = " ".join(value.split())
+    if not cleaned:
+        raise ValueError("Falta el nombre")
+    return cleaned
+
+
+class PersonaIn(BaseModel):
+    nombre: str = Field(min_length=1, max_length=80)
+    email: EmailStr
+
+    @field_validator("nombre")
     @classmethod
-    def _persona(cls, value: str) -> str:
-        cleaned = " ".join(value.split())
-        if not cleaned:
-            raise ValueError("Falta la persona")
-        return cleaned
+    def _nombre(cls, value: str) -> str:
+        return _nombre_limpio(value)
+
+
+class PersonaOut(BaseModel):
+    id: int
+    nombre: str
+    email: str
+
+
+class OtraIn(BaseModel):
+    nombre: str = Field(min_length=1, max_length=80)
+    monto: Decimal = Field(ge=0, le=Decimal("1000000000000"))
+
+    @field_validator("nombre")
+    @classmethod
+    def _nombre(cls, value: str) -> str:
+        return _nombre_limpio(value)
+
+
+class OtraOut(BaseModel):
+    id: int
+    persona_id: int
+    nombre: str
+    monto: float
+    updated_at: datetime | None
 
 
 class CompararIn(BaseModel):
@@ -66,7 +99,9 @@ class ResultadoCaucion(BaseModel):
 
 class CaucionGuardada(ResultadoCaucion):
     id: int
+    persona_id: int | None
     persona: str
+    email: str
     estado: str
     notified_at: datetime | None
     created_at: datetime | None
@@ -81,14 +116,26 @@ class Acumulado(BaseModel):
     cantidad: int
 
 
-class AcumuladoPersona(Acumulado):
-    persona: str
+class Patrimonio(BaseModel):
+    en_cauciones: float
+    en_otras: float
+    total: float
+
+
+class Perfil(BaseModel):
+    id: int
+    nombre: str
+    email: str
+    cauciones: list[CaucionGuardada]
+    otras: list[OtraOut]
+    patrimonio: Patrimonio
+    acumulado: Acumulado
 
 
 class ListaCauciones(BaseModel):
     items: list[CaucionGuardada]
+    perfiles: list[Perfil]
     acumulado: Acumulado
-    por_persona: list[AcumuladoPersona]
     referencia: Referencia
     feriados_disponibles: bool
     smtp_configurado: bool

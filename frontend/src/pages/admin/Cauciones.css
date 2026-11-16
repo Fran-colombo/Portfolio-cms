@@ -62,8 +62,129 @@
   gap: 0.75rem;
 }
 
-.caucion-fields.with-persona {
-  grid-template-columns: 1.2fr repeat(4, minmax(0, 1fr));
+.caucion-ref.cols-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.caucion-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+}
+
+.caucion-tab {
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 0.4rem 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.caucion-tab.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.caucion-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.caucion-toolbar h3 {
+  margin: 0;
+}
+
+.caucion-otras {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.caucion-otras li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.8rem 1rem;
+}
+
+.caucion-otras strong,
+.caucion-otras span,
+.caucion-otras small {
+  display: block;
+}
+
+.caucion-otras span {
+  font-weight: 600;
+}
+
+.caucion-otras small {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.caucion-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgba(29, 28, 26, 0.46);
+}
+
+.caucion-modal {
+  width: min(640px, 100%);
+  max-height: min(90vh, 820px);
+  overflow: auto;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-hover);
+  padding: 1.25rem 1.35rem 1.4rem;
+}
+
+.caucion-modal h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.2rem;
+}
+
+.caucion-modal .caucion-fields {
+  grid-template-columns: 1fr 1fr;
+}
+
+.caucion-modal p {
+  margin: 0.35rem 0 0;
+}
+
+.caucion-mail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.75rem;
+  margin: 0.35rem 0 0.75rem;
+}
+
+.caucion-mail .form-group {
+  flex: 1;
+  min-width: min(100%, 280px);
+  max-width: 28rem;
+  margin: 0;
 }
 
 .caucion-person {
@@ -214,9 +335,9 @@
 @media (max-width: 900px) {
   .caucion-ref,
   .caucion-fields,
-  .caucion-fields.with-persona,
   .caucion-metrics,
-  .caucion-ranks {
+  .caucion-ranks,
+  .caucion-ref.cols-3 {
     grid-template-columns: 1fr 1fr;
   }
 
@@ -228,9 +349,16 @@
 @media (max-width: 640px) {
   .caucion-ref,
   .caucion-fields,
-  .caucion-fields.with-persona,
   .caucion-metrics,
-  .caucion-ranks {
+  .caucion-ranks,
+  .caucion-ref.cols-3,
+  .caucion-modal .caucion-fields {
     grid-template-columns: 1fr;
+  }
+
+  .caucion-otras li,
+  .caucion-toolbar {
+    align-items: stretch;
+    flex-direction: column;
   }
 }

@@ -11,12 +11,11 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5173,http://localhost:8083,http://localhost"
     jwt_algorithm: str = "HS256"
     jwt_expire_hours: int = 24
-    smtp_host: str = ""
+    smtp_host: str = "smtp.gmail.com"
     smtp_port: int = 587
-    smtp_user: str = ""
+    smtp_user: str = "mailconkreto@gmail.com"
     smtp_password: str = ""
-    smtp_from: str = ""
-    caucion_alert_email: str = ""
+    smtp_from: str = "mailconkreto@gmail.com"
 
 
 settings = Settings()
