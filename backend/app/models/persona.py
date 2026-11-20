@@ -26,6 +26,7 @@ class OtraInversion(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     persona_id: Mapped[int] = mapped_column(ForeignKey("personas.id"), nullable=False, index=True)
     nombre: Mapped[str] = mapped_column(String(80), nullable=False)
+    moneda: Mapped[str] = mapped_column(String(3), nullable=False, default="ARS")
     monto: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     perfil: Mapped[Persona] = relationship("Persona", back_populates="otras")

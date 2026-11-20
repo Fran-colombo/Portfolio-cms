@@ -42,12 +42,25 @@ def presentar(row: Caucion, hoy: date, book: HolidayBook) -> dict:
     return data
 
 
-def patrimonio(items: list[dict], otras: list[dict]) -> dict:
+def patrimonio(items: list[dict], otras: list[dict], dolar_precio: float | None = None) -> dict:
     en_cauciones = sum(float(item["monto"]) for item in items if item.get("estado") in COLOCADAS)
-    en_otras = sum(float(item["monto"]) for item in otras)
+    en_otras_ars = 0.0
+    en_otras_usd = 0.0
+    for item in otras:
+        monto = float(item["monto"])
+        if (item.get("moneda") or "ARS").upper() == "USD":
+            en_otras_usd += monto
+        else:
+            en_otras_ars += monto
+    usd_en_pesos = round(en_otras_usd * dolar_precio, 2) if dolar_precio and en_otras_usd else 0.0
+    en_otras = round(en_otras_ars + usd_en_pesos, 2)
     return {
         "en_cauciones": round(en_cauciones, 2),
-        "en_otras": round(en_otras, 2),
+        "en_otras": en_otras,
+        "en_otras_ars": round(en_otras_ars, 2),
+        "en_otras_usd": round(en_otras_usd, 2),
+        "usd_en_pesos": usd_en_pesos,
+        "dolar_precio": dolar_precio,
         "total": round(en_cauciones + en_otras, 2),
     }
 
@@ -116,11 +129,20 @@ def mercado() -> dict:
     return referencia()
 
 
-def presentar_otra(row) -> dict:
+def presentar_otra(row, dolar_precio: float | None = None) -> dict:
+    moneda = ((getattr(row, "moneda", None) or "ARS")).upper()
+    monto = float(row.monto)
+    en_pesos = None
+    if moneda == "USD" and dolar_precio:
+        en_pesos = round(monto * dolar_precio, 2)
+    elif moneda == "ARS":
+        en_pesos = monto
     return {
         "id": row.id,
         "persona_id": row.persona_id,
         "nombre": row.nombre,
-        "monto": float(row.monto),
+        "moneda": moneda,
+        "monto": monto,
+        "en_pesos": en_pesos,
         "updated_at": row.updated_at,
     }

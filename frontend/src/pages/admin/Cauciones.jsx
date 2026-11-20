@@ -20,6 +20,29 @@ const ars = (value) =>
     maximumFractionDigits: 2,
   }).format(value);
 
+const usd = (value) =>
+  new Intl.NumberFormat('es-AR', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+
+const money = (value, moneda = 'ARS') => (moneda === 'USD' ? usd(value) : ars(value));
+
+const hora = (iso) => {
+  if (!iso) return '';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat('es-AR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
+};
+
 const pct = (value, digits = 2) =>
   `${new Intl.NumberFormat('es-AR', {
     minimumFractionDigits: digits,
@@ -299,6 +322,7 @@ export default function Cauciones() {
       type: 'otra',
       id: otra?.id || null,
       nombre: otra?.nombre || '',
+      moneda: otra?.moneda || 'ARS',
       monto: otra ? String(otra.monto) : '',
       error: null,
       busy: false,
@@ -389,13 +413,14 @@ export default function Cauciones() {
   const saveOtra = async (event) => {
     event.preventDefault();
     const nombre = dialog.nombre.trim().replace(/\s+/g, ' ');
+    const moneda = dialog.moneda === 'USD' ? 'USD' : 'ARS';
     if (!nombre) {
       setDialog((current) => ({ ...current, error: 'Falta el nombre' }));
       return;
     }
     setDialog((current) => ({ ...current, busy: true, error: null }));
     try {
-      const payload = { nombre, monto: toMoney(dialog.monto, { allowZero: true }) };
+      const payload = { nombre, moneda, monto: toMoney(dialog.monto, { allowZero: true }) };
       const editing = Boolean(dialog.id);
       if (editing) {
         await api.updateOtra(dialog.id, payload);
@@ -407,8 +432,8 @@ export default function Cauciones() {
         type: 'alert',
         title: editing ? 'Otra actualizada' : 'Otra cargada',
         message: editing
-          ? `${nombre} quedó en ${ars(payload.monto)}.`
-          : `${nombre} se sumó al patrimonio de ${selected.nombre}.`,
+          ? `${nombre} quedó en ${money(payload.monto, moneda)}.`
+          : `${nombre} se sumó al patrimonio de ${selected.nombre} en ${moneda === 'USD' ? 'dólares' : 'pesos'}.`,
       });
     } catch (err) {
       setDialog((current) => (current?.type === 'otra' ? { ...current, busy: false, error: err.message } : current));
@@ -444,7 +469,7 @@ export default function Cauciones() {
   const askDeleteOtra = (otra) => {
     askConfirm({
       title: 'Borrar otra',
-      message: `¿Borrar ${otra.nombre} (${ars(otra.monto)}) del patrimonio de ${selected.nombre}?`,
+      message: `¿Borrar ${otra.nombre} (${money(otra.monto, otra.moneda)}) del patrimonio de ${selected.nombre}?`,
       confirmLabel: 'Borrar',
       run: async () => {
         await api.deleteOtra(otra.id);
@@ -530,6 +555,7 @@ export default function Cauciones() {
   };
 
   const referencia = book?.referencia;
+  const dolar = book?.dolar;
   const avisos = (selected?.cauciones || []).filter((item) => item.estado === 'renovar' || item.estado === 'parada');
 
   return (
@@ -567,6 +593,30 @@ export default function Cauciones() {
           recomendación mira la TNA efectiva: de 8 a 30 días pide al menos 22,80%. Una caución al 21,90% por 10 días
           queda en Poco premio: le gana al promedio y al plazo fijo, y no llega a ese premio. Plazo fijo e inflación
           son contexto, no el sí o el no.
+        </p>
+      )}
+
+      {dolar && (
+        <div className="caucion-ref cols-3">
+          {(dolar.tasas || []).map((tasa) => (
+            <div className="caucion-stat" key={tasa.casa}>
+              <span>Dólar {tasa.nombre}</span>
+              <strong>
+                {tasa.venta != null ? ars(tasa.venta) : '—'}
+              </strong>
+              <small>
+                Compra {tasa.compra != null ? ars(tasa.compra) : '—'}
+                {tasa.actualizado ? ` · ${hora(tasa.actualizado)}` : ''}
+              </small>
+            </div>
+          ))}
+        </div>
+      )}
+      {dolar && (
+        <p className="form-hint">
+          {dolar.disponible
+            ? `Cotización de ${dolar.fuente}. El patrimonio pasa los dólares a pesos con la venta del ${dolar.valuacion.nombre.toLowerCase()} (${ars(dolar.valuacion.precio)}). Se actualiza al abrir esta página.`
+            : `No pude traer el dólar de ${dolar.fuente}. Los saldos en USD se muestran igual, pero el patrimonio en pesos no los suma hasta que vuelva la cotización.`}
         </p>
       )}
 
@@ -648,6 +698,17 @@ export default function Cauciones() {
               <div className="caucion-stat">
                 <span>En otras</span>
                 <strong>{ars(selected.patrimonio.en_otras)}</strong>
+                {selected.patrimonio.en_otras_usd > 0 && (
+                  <small>
+                    {usd(selected.patrimonio.en_otras_usd)}
+                    {selected.patrimonio.usd_en_pesos
+                      ? ` → ${ars(selected.patrimonio.usd_en_pesos)}`
+                      : ' sin cotización'}
+                    {selected.patrimonio.en_otras_ars > 0
+                      ? ` + ${ars(selected.patrimonio.en_otras_ars)}`
+                      : ''}
+                  </small>
+                )}
               </div>
               <div className="caucion-stat">
                 <span>Patrimonio</span>
@@ -655,7 +716,7 @@ export default function Cauciones() {
               </div>
             </div>
             <p className="form-hint">
-              El patrimonio suma el capital que sigue colocado más Otras. Las cauciones ya vencidas quedan en el historial y no se cuentan otra vez.
+              El patrimonio suma cauciones colocadas más Otras en pesos. Los dólares se guardan en USD y se pasan a pesos con la venta del blue del momento. Las cauciones ya vencidas quedan en el historial y no se cuentan otra vez.
             </p>
 
             <div className="caucion-ref">
@@ -743,7 +804,9 @@ export default function Cauciones() {
                 Agregar
               </button>
             </div>
-            <p className="form-hint">Saldos que no son caución. Actualizalos cuando quieras: se pisa el monto y queda la fecha.</p>
+            <p className="form-hint">
+              Saldos que no son caución. Los dólares se cargan en USD; el resto en pesos. Actualizalos cuando quieras: se pisa el monto y queda la fecha.
+            </p>
             {selected.otras.length === 0 ? (
               <p className="empty-state">Nada cargado en Otras.</p>
             ) : (
@@ -752,7 +815,14 @@ export default function Cauciones() {
                   <li key={otra.id}>
                     <div>
                       <strong>{otra.nombre}</strong>
-                      <span>{ars(otra.monto)}</span>
+                      <span>{money(otra.monto, otra.moneda)}</span>
+                      {otra.moneda === 'USD' && (
+                        <small>
+                          {otra.en_pesos != null
+                            ? `≈ ${ars(otra.en_pesos)} al blue`
+                            : 'Sin cotización para pasarlo a pesos'}
+                        </small>
+                      )}
                       {otra.updated_at && <small>Actualizado el {fecha(otra.updated_at)}</small>}
                     </div>
                     <div className="admin-actions">
@@ -986,12 +1056,23 @@ export default function Cauciones() {
                 value={dialog.nombre}
                 onChange={(event) => setDialog((current) => ({ ...current, nombre: event.target.value }))}
                 maxLength={80}
-                placeholder="Dólares, FCI..."
+                placeholder={dialog.moneda === 'USD' ? 'Dólares, billete...' : 'FCI, plazo fijo...'}
                 required
               />
             </div>
             <div className="form-group">
-              <label htmlFor="otra-monto">Monto actual</label>
+              <label htmlFor="otra-moneda">Moneda</label>
+              <select
+                id="otra-moneda"
+                value={dialog.moneda}
+                onChange={(event) => setDialog((current) => ({ ...current, moneda: event.target.value }))}
+              >
+                <option value="ARS">Pesos</option>
+                <option value="USD">Dólares</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label htmlFor="otra-monto">{dialog.moneda === 'USD' ? 'Monto en USD' : 'Monto en pesos'}</label>
               <input
                 id="otra-monto"
                 type="number"
@@ -1002,7 +1083,11 @@ export default function Cauciones() {
                 required
               />
             </div>
-            <p className="form-hint">Se guarda este saldo y la fecha de hoy. No arma un historial diario.</p>
+            <p className="form-hint">
+              {dialog.moneda === 'USD'
+                ? 'Se guarda en dólares. Al abrir la página se pasa a pesos con la venta del blue.'
+                : 'Se guarda este saldo y la fecha de hoy. No arma un historial diario.'}
+            </p>
             {dialog.error && <p className="form-error">{dialog.error}</p>}
             <div className="form-actions">
               <button type="submit" className="btn btn-primary" disabled={dialog.busy}>

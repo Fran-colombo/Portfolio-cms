@@ -7,6 +7,7 @@ from app.cauciones.alerts import smtp_configurado
 from app.cauciones.calc import evaluar, orden_veredicto, proyectar
 from app.cauciones.calendar import load_holidays, years_covering
 from app.cauciones.clock import ahora_art
+from app.cauciones.dolar import cotizaciones, precio_valuacion
 from app.cauciones.service import (
     acumulado,
     book_for,
@@ -81,6 +82,8 @@ def _copiar_perfil(persona: Persona) -> None:
 
 def _armar(db: Session) -> dict:
     hoy = _hoy()
+    dolar = cotizaciones()
+    precio = precio_valuacion()
     personas = db.query(Persona).order_by(Persona.nombre).all()
     rows = db.query(Caucion).order_by(Caucion.fecha_inicio.desc(), Caucion.id.desc()).all()
     otras = db.query(OtraInversion).order_by(OtraInversion.nombre, OtraInversion.id).all()
@@ -92,7 +95,7 @@ def _armar(db: Session) -> dict:
             por_persona[item["persona_id"]].append(item)
     otras_por: dict[int, list] = defaultdict(list)
     for otra in otras:
-        otras_por[otra.persona_id].append(presentar_otra(otra))
+        otras_por[otra.persona_id].append(presentar_otra(otra, precio))
 
     perfiles = []
     for persona in personas:
@@ -105,7 +108,7 @@ def _armar(db: Session) -> dict:
                 "email": persona.email or "",
                 "cauciones": chunk,
                 "otras": otras_chunk,
-                "patrimonio": patrimonio(chunk, otras_chunk),
+                "patrimonio": patrimonio(chunk, otras_chunk, precio),
                 "acumulado": acumulado(chunk, hoy),
             }
         )
@@ -114,6 +117,7 @@ def _armar(db: Session) -> dict:
         "perfiles": perfiles,
         "acumulado": acumulado(items, hoy),
         "referencia": mercado(),
+        "dolar": dolar,
         "feriados_disponibles": book.available,
         "smtp_configurado": smtp_configurado(),
     }
@@ -173,8 +177,9 @@ def list_otras(
     _: User = Depends(get_current_admin),
 ):
     persona = _get_persona(db, persona_id)
+    precio = precio_valuacion()
     ordenadas = sorted(persona.otras, key=lambda item: (item.nombre.casefold(), item.id))
-    return [presentar_otra(otra) for otra in ordenadas]
+    return [presentar_otra(otra, precio) for otra in ordenadas]
 
 
 @router.post("/personas/{persona_id}/otras", response_model=OtraOut, status_code=status.HTTP_201_CREATED)
@@ -188,13 +193,14 @@ def create_otra(
     row = OtraInversion(
         persona_id=persona_id,
         nombre=payload.nombre,
+        moneda=payload.moneda,
         monto=payload.monto,
         updated_at=ahora_art(),
     )
     db.add(row)
     db.commit()
     db.refresh(row)
-    return presentar_otra(row)
+    return presentar_otra(row, precio_valuacion())
 
 
 @router.put("/otras/{otra_id}", response_model=OtraOut)
@@ -206,11 +212,12 @@ def update_otra(
 ):
     row = _get_otra(db, otra_id)
     row.nombre = payload.nombre
+    row.moneda = payload.moneda
     row.monto = payload.monto
     row.updated_at = ahora_art()
     db.commit()
     db.refresh(row)
-    return presentar_otra(row)
+    return presentar_otra(row, precio_valuacion())
 
 
 @router.delete("/otras/{otra_id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -47,6 +47,13 @@
   font-size: 1.15rem;
 }
 
+.caucion-stat small {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
 .caucion-banner {
   margin: 0.75rem 0 0;
   padding: 0.8rem 1rem;

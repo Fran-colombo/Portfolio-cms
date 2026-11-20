@@ -42,6 +42,11 @@ def migrate() -> None:
         if "persona_id" not in columns:
             _add_column("cauciones", "persona_id", "INTEGER")
 
+    if inspector.has_table("otras_inversiones"):
+        otras_cols = {col["name"] for col in inspector.get_columns("otras_inversiones")}
+        if "moneda" not in otras_cols:
+            _add_column("otras_inversiones", "moneda", "VARCHAR(3) NOT NULL DEFAULT 'ARS'")
+
     _link_personas()
 
 

@@ -1,5 +1,6 @@
 from datetime import date, datetime
 from decimal import Decimal
+from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
@@ -40,6 +41,7 @@ class PersonaOut(BaseModel):
 
 class OtraIn(BaseModel):
     nombre: str = Field(min_length=1, max_length=80)
+    moneda: Literal["ARS", "USD"] = "ARS"
     monto: Decimal = Field(ge=0, le=Decimal("1000000000000"))
 
     @field_validator("nombre")
@@ -47,12 +49,19 @@ class OtraIn(BaseModel):
     def _nombre(cls, value: str) -> str:
         return _nombre_limpio(value)
 
+    @field_validator("moneda")
+    @classmethod
+    def _moneda(cls, value: str) -> str:
+        return value.upper()
+
 
 class OtraOut(BaseModel):
     id: int
     persona_id: int
     nombre: str
+    moneda: str
     monto: float
+    en_pesos: float | None
     updated_at: datetime | None
 
 
@@ -119,7 +128,34 @@ class Acumulado(BaseModel):
 class Patrimonio(BaseModel):
     en_cauciones: float
     en_otras: float
+    en_otras_ars: float
+    en_otras_usd: float
+    usd_en_pesos: float
+    dolar_precio: float | None
     total: float
+
+
+class DolarTasa(BaseModel):
+    casa: str
+    nombre: str
+    compra: float | None
+    venta: float | None
+    actualizado: datetime | None
+
+
+class DolarValuacion(BaseModel):
+    casa: str
+    nombre: str
+    lado: str
+    precio: float | None
+    actualizado: datetime | None
+
+
+class DolarHoy(BaseModel):
+    disponible: bool
+    tasas: list[DolarTasa]
+    valuacion: DolarValuacion
+    fuente: str
 
 
 class Perfil(BaseModel):
@@ -137,6 +173,7 @@ class ListaCauciones(BaseModel):
     perfiles: list[Perfil]
     acumulado: Acumulado
     referencia: Referencia
+    dolar: DolarHoy
     feriados_disponibles: bool
     smtp_configurado: bool
 
